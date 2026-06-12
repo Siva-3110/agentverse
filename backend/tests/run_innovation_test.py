@@ -13,7 +13,10 @@ from backend.agents.patent_agent import patent_agent
 from backend.agents.gap_analysis_agent import gap_analysis_agent
 from backend.agents.innovation_agent import innovation_agent
 
-DOMAIN = "Electric Vehicles"
+print("Supported domains: Artificial Intelligence, Biotechnology, Renewable Energy, Cybersecurity, Smart Cities, Electric Vehicles")
+DOMAIN = input("Enter technology domain to analyze (default: Electric Vehicles): ").strip()
+if not DOMAIN:
+    DOMAIN = "Electric Vehicles"
 
 print("=" * 70)
 print("  PatentScout AI - Innovation Agent Verification Run")

@@ -231,9 +231,9 @@ def innovation_agent(state: AgentState) -> AgentState:
         else:
             client = genai.Client(api_key=api_key)
             try:
-                logger.info("Calling Gemini 2.5 Flash for innovation ideas...")
+                logger.info("Calling Gemini 1.5 Flash for innovation ideas...")
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-1.5-flash",
                     contents=final_prompt,
                 )
                 response_text = response.text
