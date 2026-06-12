@@ -8,7 +8,7 @@ def generate_response(prompt: str) -> str:
     Call Gemini 2.5 Flash model with the given prompt.
     Returns the raw string output.
     """
-    print("[LLM Client] Sending request to Gemini 2.5 Flash...")
+    print("[LLM Client] Sending request to Gemini 2.5 Flash Lite...")
     
     # Check if key is available
     api_key = settings.GOOGLE_API_KEY
@@ -19,7 +19,7 @@ def generate_response(prompt: str) -> str:
     try:
         # Initialize LangChain Google GenAI client
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model="gemini-2.5-flash-lite",
             google_api_key=api_key,
             temperature=0.1
         )
