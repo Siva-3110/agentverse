@@ -115,6 +115,30 @@ def get_local_fallback_gaps(domain: str) -> List[Dict[str, Any]]:
                 "rationale": "Extensive active research on dynamic reinforcement learning algorithms optimizing municipal power routers, while commercial patents focus on passive load switching."
             }
         ]
+    elif any(kw in domain_lower for kw in ["vehicle", "battery", "charging"]):
+        return [
+            {
+                "area": "Solid-State Battery Cell Interface Degradation",
+                "research_activity": "High",
+                "patent_activity": "None",
+                "opportunity_score": 93,
+                "rationale": "High volume of research publications on solid-electrolyte interphase degradation modeling, but no commercial patent coverage exists in the local database."
+            },
+            {
+                "area": "Dynamic Wireless Charging Grid Routing",
+                "research_activity": "High",
+                "patent_activity": "Low",
+                "opportunity_score": 88,
+                "rationale": "Scholarly interest in peer-to-peer load balancing for dynamic roadway charging systems, with only a few early-stage assignees filing patents."
+            },
+            {
+                "area": "AI-Powered Electrolyte State-of-Health Estimation",
+                "research_activity": "Medium",
+                "patent_activity": "Low",
+                "opportunity_score": 80,
+                "rationale": "Emerging academic models using neural nets for real-time battery cell health prognostics, while commercial patents focus on passive voltage/current measurements."
+            }
+        ]
     else:
         # Default to Smart Agriculture
         return [

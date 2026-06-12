@@ -23,3 +23,10 @@ class AgentState(TypedDict):
     report_markdown: str
     top_recommendation: dict
     error: Optional[str]
+
+class InnovationIdea(BaseModel):
+    name: str
+    description: str
+    target_user: str
+    type: str
+    based_on_gap: str
