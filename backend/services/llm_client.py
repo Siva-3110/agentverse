@@ -1,38 +1,98 @@
 import os
 import json
-from langchain_google_genai import ChatGoogleGenerativeAI
+import requests
 from backend.config import settings
 
 def generate_response(prompt: str) -> str:
     """
-    Call Gemini 2.5 Flash model with the given prompt.
-    Returns the raw string output.
+    Call LLM with the given prompt.
+    Checks for GROQ_API_KEY to use Groq (llama-3.3-70b-versatile).
+    Falls back to Gemini if GROQ_API_KEY is not set but GOOGLE_API_KEY is.
+    Otherwise, returns fallback JSON.
     """
-    print("[LLM Client] Sending request to Gemini 2.5 Flash Lite...")
+    groq_api_key = getattr(settings, "GROQ_API_KEY", None) or os.getenv("GROQ_API_KEY")
+    google_api_key = settings.GOOGLE_API_KEY
     
-    # Check if key is available
-    api_key = settings.GOOGLE_API_KEY
-    if not api_key:
-        print("[LLM Client] Warning: GOOGLE_API_KEY is not configured in .env. Using mock JSON fallback...")
-        return get_fallback_json(prompt)
+    if groq_api_key:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {groq_api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a patent analysis assistant. You output strict, valid JSON matching the requested schema. Do not output markdown, reasoning, backticks, or any conversational text. Only output raw JSON."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0.1
+        }
         
-    try:
-        # Initialize LangChain Google GenAI client
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-lite",
-            google_api_key=api_key,
-            temperature=0.1
-        )
-        
-        # Call model
-        response = llm.invoke(prompt)
-        raw_text = response.content
-        if isinstance(raw_text, bytes):
-            raw_text = raw_text.decode("utf-8")
-        return raw_text.strip()
-    except Exception as e:
-        print(f"[LLM Client] Gemini API call failed: {e}. Using fallback generator...")
-        return get_fallback_json(prompt)
+        import time
+        groq_models = ["llama-3.3-70b-versatile", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+        for attempt, model_name in enumerate(groq_models):
+            print(f"[LLM Client] Sending request to Groq ({model_name})...")
+            payload["model"] = model_name
+            try:
+                response = requests.post(url, headers=headers, json=payload, timeout=25)
+                if response.status_code == 200:
+                    result = response.json()
+                    content = result["choices"][0]["message"]["content"].strip()
+                    if content.startswith("```"):
+                        lines = content.splitlines()
+                        if lines[0].startswith("```"):
+                            lines = lines[1:]
+                        if lines and lines[-1].strip() == "```":
+                            lines = lines[:-1]
+                        content = "\n".join(lines).strip()
+                    return content
+                elif response.status_code == 429:
+                    print(f"[LLM Client] Groq 429 Rate Limit for '{model_name}'. Switching model / retrying in 2s...")
+                    time.sleep(2)
+                    continue
+                else:
+                    print(f"[LLM Client] Groq API returned status {response.status_code}: {response.text}")
+                    break
+            except Exception as e:
+                print(f"[LLM Client] Groq API call failed for '{model_name}': {e}")
+                break
+
+
+
+
+
+
+
+            
+    # Fallback to Gemini
+    if google_api_key:
+        print("[LLM Client] Sending request to Gemini 1.5 Flash ...")
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            llm = ChatGoogleGenerativeAI(
+                model="gemini-1.5-flash",
+                google_api_key=google_api_key,
+                temperature=0.1,
+                request_timeout=10
+            )
+
+            response = llm.invoke(prompt)
+            raw_text = response.content
+            if isinstance(raw_text, bytes):
+                raw_text = raw_text.decode("utf-8")
+            return raw_text.strip()
+        except Exception as e:
+            print(f"[LLM Client] Gemini API call failed: {e}. Using fallback generator...")
+            
+    # Mock fallback
+    print("[LLM Client] Warning: No valid LLM keys configured. Using mock JSON fallback...")
+    return get_fallback_json(prompt)
 
 def get_fallback_json(prompt: str) -> str:
     """

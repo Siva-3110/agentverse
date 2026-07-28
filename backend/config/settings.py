@@ -14,6 +14,7 @@ else:
 
 # App Configurations
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 SEMANTIC_SCHOLAR_API_KEY = os.getenv("SEMANTIC_SCHOLAR_API_KEY")
 PATENTSVIEW_API_KEY = os.getenv("PATENTSVIEW_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://patentscout:patentscout_pass@localhost:5432/patentscout_db")

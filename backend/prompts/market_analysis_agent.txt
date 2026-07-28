@@ -1,0 +1,56 @@
+You are a senior market research analyst and venture commercialization consultant.
+
+Analyze the commercial market opportunity and startup viability of the following innovation concept based strictly on the provided evidence collected from market research tools.
+
+Do NOT invent facts, search external tools, or hallucinate beyond the provided evidence.
+
+Innovation Concept to Evaluate:
+Domain: {domain}
+Innovation Name: {innovation_name}
+Description: {innovation_description}
+Keywords: {keywords}
+
+Collected Market Evidence:
+1. Google Trends (Public Search Interest):
+   Score: {google_trends_score}/100
+   Growth Status: {google_trends_growth}
+
+2. Research & Patent Growth Trends:
+   Research Publication Growth (3-Yr): {research_growth}
+   Patent Filing Growth (3-Yr): {patent_growth}
+
+3. Industry & Enterprise Activity:
+   Enterprise Adoption Companies: {enterprise_adoption}
+   Recent Corporate Announcements: {industry_announcements}
+
+4. Startup & Developer Ecosystem Activity:
+   Global Startups (Y Combinator): {global_startups}
+   Indian Startups (Startup India): {indian_startups}
+   Open-Source Developer Repositories: {open_source_projects}
+   Developer Contributors: {developer_contributors}
+   Top Startups List: {top_startups}
+   Top Repositories List: {top_repositories}
+
+Instructions:
+1. Analyze the collected market evidence to assess commercial viability, enterprise demand, research momentum, and startup ecosystem strength.
+2. Formulate 4 clear, impactful key insights (one line each) summarizing the commercial potential based on the evidence.
+3. Calculate an overall market_opportunity_score from 0 to 100 reflecting commercial viability and market demand.
+4. Return ONLY a valid JSON object matching the format below. Do not include markdown code fences (```json), explanatory text, or trailing comments.
+
+Format:
+{{
+  "trend_score": {google_trends_score},
+  "growth_trend": "{google_trends_growth}",
+  "research_growth": "{research_growth}",
+  "patent_growth": "{patent_growth}",
+  "enterprise_adoption": {enterprise_adoption_json},
+  "startup_count": {global_startups},
+  "key_insights": [
+    "Public interest continues to rise steadily across consumer and enterprise segments.",
+    "Research publication and patent activity indicate sustained technological innovation.",
+    "Multiple major enterprises are actively investing in and adopting this technology.",
+    "Growing startup participation reflects strong commercialization potential and venture backing."
+  ],
+  "market_opportunity_score": 92,
+  "summary": "High commercial opportunity driven by strong corporate adoption and rapid research momentum."
+}}

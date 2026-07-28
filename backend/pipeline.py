@@ -20,9 +20,11 @@ class AgentState(TypedDict):
     gap_matrix: List[dict]
     innovation_ideas: List[dict]
     patentability_scores: List[dict]
+    market_analysis: List[dict]
     report_markdown: str
     top_recommendation: dict
     error: Optional[str]
+
 
 class InnovationIdea(BaseModel):
     name: str
@@ -30,3 +32,26 @@ class InnovationIdea(BaseModel):
     target_user: str
     type: str
     based_on_gap: str
+
+class PatentabilityScore(BaseModel):
+    innovation_name: str = Field(..., description="Name of the innovation evaluated")
+    novelty_score: int = Field(..., description="Novelty score (0-100)")
+    competition_score: int = Field(..., description="Competition score (0-100)")
+    feasibility_score: int = Field(..., description="Technical feasibility score (0-100)")
+    market_potential_score: int = Field(..., description="Market potential score (0-100)")
+    overall_score: int = Field(..., description="Overall calculated score (0-100)")
+    reasoning: str = Field(..., description="Reasoning and prior art explanation")
+    similar_patents: List[str] = Field(default_factory=list, description="List of similar patent citations")
+
+class MarketAnalysisResult(BaseModel):
+    innovation_name: str = Field(..., description="Name of the innovation evaluated")
+    trend_score: int = Field(..., description="Google Trends score (0-100)")
+    growth_trend: str = Field(..., description="Growth trend status (e.g., Increasing, Surging)")
+    research_growth: str = Field(..., description="Research publication growth (e.g. +285%)")
+    patent_growth: str = Field(..., description="Patent filing growth (e.g. +240%)")
+    enterprise_adoption: List[str] = Field(default_factory=list, description="Top enterprises adopting or investing")
+    startup_count: int = Field(..., description="Number of active startups in ecosystem")
+    key_insights: List[str] = Field(default_factory=list, description="4 core market insights")
+    market_opportunity_score: int = Field(..., description="Calculated overall market opportunity score (0-100)")
+    summary: str = Field(..., description="Executive summary of market potential")
+
