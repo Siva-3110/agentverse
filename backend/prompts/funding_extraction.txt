@@ -1,0 +1,29 @@
+You are an AI funding data analyst. Your task is to analyze the following webpage content extracted from an official funding/grant portal and convert it into a valid, structured JSON object matching the requested schema.
+
+Do NOT invent facts, search external tools, or hallucinate beyond the provided text.
+
+Webpage Source URL: {url}
+Search Category: {category}
+
+Webpage Extracted Content:
+{webpage_text}
+
+Instructions:
+1. Extract the program details from the webpage content into a single valid JSON object.
+2. If exact amounts or deadlines are missing, specify "Grant / Financial Support Available" or "Rolling / Open Application".
+3. Return ONLY a valid JSON object matching the exact format below. Do not include markdown code fences (```json), conversational text, or trailing comments.
+
+Format:
+{{
+  "name": "Program Name",
+  "organization": "Host Organization Name",
+  "category": "{category}",
+  "funding_amount": "Financial amount or grant tier",
+  "country": "Target Country or Global",
+  "eligibility": "Target startup stage or eligibility criteria",
+  "technology_focus": "Technology focus area",
+  "startup_stage": "Target stage (e.g. Prototype, Seed, MVP)",
+  "benefits": ["Benefit 1", "Benefit 2", "Benefit 3"],
+  "deadline": "Application deadline or Rolling",
+  "official_website": "{url}"
+}}

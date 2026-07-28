@@ -20,5 +20,11 @@ PATENTSVIEW_API_KEY = os.getenv("PATENTSVIEW_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://patentscout:patentscout_pass@localhost:5432/patentscout_db")
 OPENALEX_API_EMAIL = os.getenv("OPENALEX_API_EMAIL")
 
+# Search & Web Extraction API Configurations
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
+FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY")
+
 # Vector Database Configurations
 CHROMA_DB_DIR = str(BASE_DIR / "backend" / "chroma_db")
+

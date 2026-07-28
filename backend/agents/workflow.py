@@ -1,7 +1,9 @@
 import os
 import sys
 import time
+import logging
 from typing import Dict, Any
+
 
 
 # Ensure parent directory is in search path
@@ -14,8 +16,10 @@ from backend.agents.gap_analysis_agent import gap_analysis_agent
 from backend.agents.innovation_agent import innovation_agent
 from backend.agents.patentability_agent import patentability_agent
 from backend.agents.market_analysis_agent import market_analysis_agent
+from backend.agents.funding_agent import funding_agent
 
 # Configure structured logging
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("WorkflowOrchestrator")
 
@@ -114,8 +118,7 @@ def run_patentscout_pipeline(domain: str) -> Dict[str, Any]:
     time.sleep(1.5)
 
     # ── Step 6: Market Analysis Agent ───────────────────────────────────
-
-    _log_print(f"\n[Step 6/6] Executing Agent 06: Market Analysis Agent...")
+    _log_print(f"\n[Step 6/7] Executing Agent 06: Market Analysis Agent...")
     state = market_analysis_agent(state)
     if state.get("error"):
         _log_print(f"[FAIL] Market Analysis Agent failed: {state['error']}")
@@ -125,6 +128,22 @@ def run_patentscout_pipeline(domain: str) -> Dict[str, Any]:
     _log_print(f"[PASS] Market Analysis Agent completed: {len(market_reports)} market reports generated.")
     for r in market_reports:
         _log_print(f"   * {r.get('innovation_name')} - Market Opportunity Score: {r.get('market_opportunity_score')}/100 (Trends: {r.get('trend_score')}, Enterprise Adopters: {', '.join(r.get('enterprise_adoption', [])[:3])})")
+    time.sleep(1.5)
+
+    # ── Step 7: Funding Opportunity Agent ───────────────────────────────
+    _log_print(f"\n[Step 7/7] Executing Agent 07: Funding Opportunity Agent...")
+    state = funding_agent(state)
+    if state.get("error"):
+        _log_print(f"[FAIL] Funding Opportunity Agent failed: {state['error']}")
+        return {"success": False, "error": f"Funding Opportunity Agent failed: {state['error']}"}
+
+    funding_res = state.get("funding_analysis", {})
+    top_opps = funding_res.get("top_opportunities", []) if isinstance(funding_res, dict) else []
+    _log_print(f"[PASS] Funding Opportunity Agent completed: {len(top_opps)} top funding pathways identified.")
+    for o in top_opps:
+        safe_amount = str(o.get('funding_amount', '')).replace('₹', 'INR ')
+        _log_print(f"   * [{o.get('match_score')}% Match] {o.get('name')} ({o.get('category')}) - Funding: {safe_amount}")
+
 
     top_rec = state.get("top_recommendation") or (scores[0] if scores else {})
     if top_rec:
@@ -133,10 +152,11 @@ def run_patentscout_pipeline(domain: str) -> Dict[str, Any]:
         _log_print(f"  Patentability Score: {top_rec.get('overall_score')}/100")
         if market_reports:
             _log_print(f"  Market Opportunity Score: {market_reports[0].get('market_opportunity_score')}/100")
+        if top_opps:
+            _log_print(f"  Top Recommended Funding: {top_opps[0].get('name')} ({top_opps[0].get('match_score')}% Match)")
         _log_print("=" * 70)
 
     _log_print(f"\n[PASS] Pipeline executed successfully for domain '{domain}'. Returning results.\n")
-
 
     return {
         "success": True,
@@ -147,8 +167,10 @@ def run_patentscout_pipeline(domain: str) -> Dict[str, Any]:
         "innovation_ideas": state.get("innovation_ideas", []),
         "patentability_scores": state.get("patentability_scores", []),
         "market_analysis": state.get("market_analysis", []),
+        "funding_analysis": state.get("funding_analysis"),
         "top_recommendation": top_rec
     }
+
 
 
 

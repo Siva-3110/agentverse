@@ -1,5 +1,6 @@
-from typing import TypedDict, List, Optional
+from typing import TypedDict, List, Optional, Dict
 from pydantic import BaseModel, Field
+
 
 class ResearchTopic(BaseModel):
     topic: str = Field(..., description="Short descriptive name of the topic")
@@ -21,6 +22,7 @@ class AgentState(TypedDict):
     innovation_ideas: List[dict]
     patentability_scores: List[dict]
     market_analysis: List[dict]
+    funding_analysis: Optional[dict]
     report_markdown: str
     top_recommendation: dict
     error: Optional[str]
@@ -54,4 +56,29 @@ class MarketAnalysisResult(BaseModel):
     key_insights: List[str] = Field(default_factory=list, description="4 core market insights")
     market_opportunity_score: int = Field(..., description="Calculated overall market opportunity score (0-100)")
     summary: str = Field(..., description="Executive summary of market potential")
+
+class FundingOpportunity(BaseModel):
+    name: str = Field(..., description="Program or grant name")
+    organization: str = Field(..., description="Host organization or provider")
+    category: str = Field(..., description="Category: Government Grant, Research Grant, Incubator, Accelerator, VC Firm, Angel Network, Competition")
+    funding_amount: str = Field(..., description="Financial amount or monetary support tier")
+    country: str = Field(..., description="Target region or country")
+    eligibility: str = Field(..., description="Eligibility requirements and target startup stage")
+    technology_focus: str = Field(..., description="Technology focus area")
+    startup_stage: str = Field(..., description="Target stage: Prototype, MVP, Seed, Early-stage")
+    benefits: List[str] = Field(default_factory=list, description="List of non-monetary benefits")
+    deadline: str = Field(default="Rolling / Open", description="Application deadline or open status")
+    official_website: str = Field(..., description="Official program website URL")
+    match_score: int = Field(..., description="Deterministic calculated match score (0-100)")
+    reason_for_recommendation: str = Field(..., description="Explanation of match rationale")
+
+class FundingAnalysisResult(BaseModel):
+    innovation_name: str = Field(..., description="Name of the evaluated innovation")
+    domain: str = Field(..., description="Technology domain")
+    country: str = Field(..., description="Target country evaluated")
+    startup_stage: str = Field(..., description="Evaluated startup stage")
+    top_opportunities: List[FundingOpportunity] = Field(default_factory=list, description="Ranked funding opportunities")
+    funding_strategy: List[Dict[str, str]] = Field(default_factory=list, description="Phased commercialization funding roadmap")
+    summary: str = Field(..., description="Executive summary of funding pathway")
+
 
