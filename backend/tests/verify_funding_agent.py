@@ -18,11 +18,12 @@ from backend.agents.funding_agent import funding_agent
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
-def verify_funding_agent_standalone(domain: str = "Electric Vehicles"):
+def verify_funding_agent_standalone(domain: str = "Electric Vehicles", country: str = "India", startup_stage: str = "Prototype"):
     print("\n" + "=" * 70)
     print("  FUNDING OPPORTUNITY AGENT (07) - STANDALONE VERIFICATION RUN")
     print("=" * 70)
-    print(f"[INIT] Technology Domain set to: '{domain}'\n")
+    print(f"[INIT] Domain: '{domain}' | Target Country: '{country}' | Stage: '{startup_stage}'\n")
+
 
     # Construct mock prior state (simulating Agents 01-06 output)
     initial_state: AgentState = {
@@ -99,5 +100,17 @@ def verify_funding_agent_standalone(domain: str = "Electric Vehicles"):
     print("\n[SUCCESS] Funding Opportunity Agent verification completed successfully!\n")
 
 if __name__ == "__main__":
-    target_domain = sys.argv[1] if len(sys.argv) > 1 else "Electric Vehicles"
-    verify_funding_agent_standalone(target_domain)
+    if len(sys.argv) > 1:
+        target_domain = sys.argv[1]
+        target_country = "India"
+        target_stage = "Prototype"
+    else:
+        print("======================================================================")
+        print("             PATENTSCOUT AI AGENT 07 INTERACTIVE ENTRY                ")
+        print("======================================================================")
+        target_domain = input("Enter Technology Domain [Default: Electric Vehicles]: ").strip() or "Electric Vehicles"
+        target_country = input("Enter Target Country (e.g. India, USA, Global) [Default: India]: ").strip() or "India"
+        target_stage = input("Enter Startup Stage (e.g. Prototype, MVP, Seed) [Default: Prototype]: ").strip() or "Prototype"
+
+    verify_funding_agent_standalone(domain=target_domain, country=target_country, startup_stage=target_stage)
+

@@ -18,12 +18,20 @@ from backend.agents.workflow import run_patentscout_pipeline
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 def main():
-    domain = sys.argv[1] if len(sys.argv) > 1 else "Electric Vehicles"
+    if len(sys.argv) > 1:
+        domain = sys.argv[1]
+    else:
+        print("======================================================================")
+        print("                PATENTSCOUT AI INTERACTIVE ENTRY                      ")
+        print("======================================================================")
+        user_input = input("Enter Technology Domain (e.g. Electric Vehicles, Quantum Computing, Artificial Intelligence) [Default: Electric Vehicles]: ").strip()
+        domain = user_input if user_input else "Electric Vehicles"
 
     print("\n" + "=" * 70)
     print("  PatentScout AI - 7-Agent End-to-End Pipeline Verification Run")
     print(f"  Domain: {domain}")
     print("=" * 70 + "\n")
+
 
     result = run_patentscout_pipeline(domain=domain)
 
