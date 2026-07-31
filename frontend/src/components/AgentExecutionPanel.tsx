@@ -12,13 +12,13 @@ function AgentItem({ name, description, status, isActive }: AgentStatusProps) {
   const getIcon = () => {
     switch (status) {
       case "completed":
-        return <CheckCircle2 className="w-5 h-5 text-emerald-400" />;
+        return <CheckCircle2 className="w-5 h-5 text-emerald-600" />;
       case "running":
-        return <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />;
+        return <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />;
       case "error":
-        return <AlertTriangle className="w-5 h-5 text-rose-400 animate-bounce" />;
+        return <AlertTriangle className="w-5 h-5 text-rose-600 animate-bounce" />;
       default:
-        return <Circle className="w-5 h-5 text-zinc-600" />;
+        return <Circle className="w-5 h-5 text-slate-400" />;
     }
   };
 
@@ -26,33 +26,34 @@ function AgentItem({ name, description, status, isActive }: AgentStatusProps) {
     <div
       className={`p-4 rounded-xl border transition-all duration-300 flex items-center justify-between ${
         isActive
-          ? "border-indigo-500/30 bg-indigo-500/5 shadow-sm shadow-indigo-500/5"
-          : "border-darkBorder bg-[#12121A]/30"
+          ? "border-indigo-300 bg-indigo-50/80 shadow-sm"
+          : "border-slate-200 bg-white"
       }`}
     >
       <div className="flex items-center gap-3.5">
         <div className="flex items-center justify-center">{getIcon()}</div>
         <div>
-          <h4 className="text-sm font-semibold text-white">{name}</h4>
-          <p className="text-xs text-zinc-400 mt-0.5">{description}</p>
+          <h4 className="text-sm font-bold text-[#0F172A]">{name}</h4>
+          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
         </div>
       </div>
-      <div className="text-xs font-semibold uppercase tracking-wider">
-        {status === "completed" && <span className="text-emerald-400">Done</span>}
-        {status === "running" && <span className="text-indigo-400 animate-pulse">Running</span>}
-        {status === "error" && <span className="text-rose-400">Failed</span>}
-        {status === "pending" && <span className="text-zinc-600">Pending</span>}
+      <div className="text-xs font-bold uppercase tracking-wider">
+        {status === "completed" && <span className="text-emerald-700">DONE</span>}
+        {status === "running" && <span className="text-indigo-600 animate-pulse">RUNNING</span>}
+        {status === "error" && <span className="text-rose-600">FAILED</span>}
+        {status === "pending" && <span className="text-slate-400">PENDING</span>}
       </div>
     </div>
   );
 }
 
 interface AgentExecutionPanelProps {
-  activeAgent: "idle" | "research" | "patent" | "gap_analysis" | "innovation" | "patentability" | "completed";
-  progress: number;
+  activeAgent?: "idle" | "research" | "patent" | "gap_analysis" | "innovation" | "patentability" | "completed";
+  progress?: number;
 }
 
-export default function AgentExecutionPanel({ activeAgent, progress }: AgentExecutionPanelProps) {
+export default function AgentExecutionPanel({ activeAgent = "completed", progress = 100 }: AgentExecutionPanelProps) {
+
   const getAgentStatus = (agentName: "research" | "patent" | "gap_analysis" | "innovation" | "patentability") => {
     if (activeAgent === "completed") return "completed";
     if (activeAgent === "idle") return "pending";
@@ -67,19 +68,19 @@ export default function AgentExecutionPanel({ activeAgent, progress }: AgentExec
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between border-b border-darkBorder/30 pb-4">
+    <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-6">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-4">
         <div>
-          <h3 className="text-base font-semibold text-white">Pipeline Agent Orchestration</h3>
-          <p className="text-xs text-zinc-400 mt-0.5">Live visualization of multi-agent tasks</p>
+          <h3 className="text-base font-bold text-[#0F172A]">Pipeline Agent Orchestration</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Live visualization of multi-agent tasks</p>
         </div>
         <div className="text-right">
-          <span className="text-xl font-bold text-white">{progress}%</span>
-          <p className="text-xs text-zinc-500 mt-0.5">Overall progress</p>
+          <span className="text-xl font-extrabold text-[#0F172A]">{progress}%</span>
+          <p className="text-xs text-slate-500 mt-0.5">Overall progress</p>
         </div>
       </div>
 
-      <Progress value={progress} className="h-1.5" />
+      <Progress value={progress} className="h-2 bg-slate-100" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
         <AgentItem

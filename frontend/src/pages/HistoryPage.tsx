@@ -1,152 +1,103 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { History, Calendar, FileText, Scroll, AlertCircle, Lightbulb, Play, CheckCircle2 } from "lucide-react";
-import { Card } from "../components/ui/Card";
-import { Badge } from "../components/ui/Badge";
-import { Button } from "../components/ui/Button";
+import { motion } from "framer-motion";
+import { Clock, Search, ArrowUpRight, CheckCircle2, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import Topbar from "../components/Topbar";
 
-// Import mock data to let users load these states back into localStorage
-import { startAnalysis, pollAnalysis } from "../services/api";
+const MOCK_HISTORY = [
+  {
+    id: 1, domain: "Electric Vehicles", date: "2024-07-25", agents: 7, status: "Complete",
+    gaps: 3, innovations: 2, topScore: 88
+  },
+  {
+    id: 2, domain: "Generative AI", date: "2024-07-20", agents: 7, status: "Complete",
+    gaps: 5, innovations: 4, topScore: 92
+  },
+  {
+    id: 3, domain: "Quantum Computing", date: "2024-07-15", agents: 5, status: "Partial",
+    gaps: 2, innovations: 1, topScore: 76
+  }
+];
 
 export default function HistoryPage() {
-  const navigate = useNavigate();
-  const [loadingDomain, setLoadingDomain] = useState<string | null>(null);
-
-  const historyItems = [
-    {
-      domain: "Smart Cities",
-      date: "2026-06-11",
-      papers: 64,
-      patents: 950,
-      gaps: 6,
-      ideas: 3,
-      status: "completed"
-    },
-    {
-      domain: "Cybersecurity",
-      date: "2026-06-10",
-      papers: 71,
-      patents: 1180,
-      gaps: 5,
-      ideas: 3,
-      status: "completed"
-    },
-    {
-      domain: "Biotechnology",
-      date: "2026-06-08",
-      papers: 90,
-      patents: 870,
-      gaps: 8,
-      ideas: 4,
-      status: "completed"
-    },
-    {
-      domain: "Renewable Energy",
-      date: "2026-06-05",
-      papers: 85,
-      patents: 1120,
-      gaps: 7,
-      ideas: 3,
-      status: "completed"
-    }
-  ];
-
-  const handleLoadHistory = async (domain: string) => {
-    setLoadingDomain(domain);
-    try {
-      // Trigger API / simulated call to generate session
-      const res = await startAnalysis(domain);
-      // Fast forward polling simulation for history items
-      const state = await pollAnalysis(res.session_id);
-      
-      // Override status to completed instantly
-      state.status = "completed";
-      state.activeAgent = "completed";
-      state.progress = 100;
-      
-      localStorage.setItem("latest_results", JSON.stringify(state));
-      localStorage.setItem("active_domain", domain);
-      
-      setTimeout(() => {
-        setLoadingDomain(null);
-        navigate("/dashboard");
-      }, 800);
-    } catch (err) {
-      setLoadingDomain(null);
-      console.error(err);
-    }
-  };
-
   return (
-    <div className="space-y-8 max-w-4xl mx-auto py-2">
-      {/* Page Header */}
-      <div className="flex items-center justify-between border-b border-darkBorder/30 pb-4">
-        <div className="flex items-center gap-2">
-          <History className="w-5 h-5 text-indigo-400" />
-          <h2 className="text-xl font-bold text-white tracking-tight">Analysis History</h2>
-        </div>
-        <Badge variant="outline" className="text-xs">
-          Total Sessions Saved: {historyItems.length}
-        </Badge>
-      </div>
+    <div className="flex flex-col h-full bg-[#F8FAFC]">
+      <Topbar
+        crumbs={[{ label: "Dashboard", path: "/dashboard" }, { label: "Mission History" }]}
+        title="Mission History"
+        subtitle="Archived intelligence runs and completed analyses"
+      />
 
-      {/* History Grid */}
-      <div className="grid grid-cols-1 gap-4">
-        {historyItems.map((item) => (
-          <Card key={item.domain} className="p-5 bg-[#0D1117]/50 border border-darkBorder/40 hover:border-darkBorder/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-3.5">
-              <div className="flex items-center gap-2.5">
-                <h3 className="text-base font-bold text-white tracking-tight">{item.domain}</h3>
-                <Badge variant="success" className="gap-1 text-[9px] py-0">
-                  <CheckCircle2 className="w-3 h-3" />
-                  <span>{item.status}</span>
-                </Badge>
-              </div>
+      <main className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
 
-              {/* Grid of stats */}
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-zinc-500">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>{item.date}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{item.papers} papers</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Scroll className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>{item.patents} patents</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-purple-400" />
-                  <span>{item.gaps} gaps</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Lightbulb className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{item.ideas} ideas</span>
-                </div>
-              </div>
+        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="icon-box bg-slate-100">
+              <Clock className="w-4 h-4 text-slate-600" />
             </div>
+            <span className="text-overline">Mission History</span>
+          </div>
+          <h1 className="text-page-title">Past Analyses</h1>
+          <p className="text-body mt-2">All previous intelligence runs across technology domains.</p>
+        </motion.div>
 
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => handleLoadHistory(item.domain)}
-              disabled={loadingDomain !== null}
-              className="gap-2 text-xs font-semibold px-4 min-w-[130px] h-9"
+        {/* Search */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            placeholder="Search domain history..."
+            className="w-full h-10 pl-10 pr-4 bg-white border border-slate-200 rounded-[12px] text-[13px] font-medium text-slate-700 focus:outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+          />
+        </div>
+
+        {/* History Cards */}
+        <div className="space-y-4">
+          {MOCK_HISTORY.map((item, idx) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
             >
-              {loadingDomain === item.domain ? (
-                <span>Loading...</span>
-              ) : (
-                <>
-                  <Play className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Load Workspace</span>
-                </>
-              )}
-            </Button>
-          </Card>
-        ))}
-      </div>
+              <div className="premium-card p-5 group hover-lift">
+                <div className="flex flex-col lg:flex-row items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-[16px] font-bold text-slate-900">{item.domain}</h3>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${item.status === "Complete" ? "badge-emerald" : "badge-amber"}`}>
+                        {item.status === "Complete" ? <CheckCircle2 className="w-3 h-3" /> : null}
+                        {item.status}
+                      </span>
+                    </div>
+                    <p className="text-caption mb-3">{item.date}</p>
+                    <div className="flex flex-wrap gap-3">
+                      {[
+                        { label: "Agents", value: `${item.agents}/7` },
+                        { label: "Gaps Found", value: item.gaps },
+                        { label: "Innovations", value: item.innovations },
+                        { label: "Top Score", value: `${item.topScore}/100` }
+                      ].map(m => (
+                        <div key={m.label} className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-[10px]">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{m.label}</span>
+                          <div className="text-[14px] font-bold text-slate-800">{m.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button className="btn-ghost text-slate-400 hover:text-red-500">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <Link to="/dashboard" className="btn-premium text-[12px] px-4 py-2">
+                      <span>Restore</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </main>
     </div>
   );
 }

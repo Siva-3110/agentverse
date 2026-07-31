@@ -20,7 +20,7 @@ from backend.agents.funding_agent import funding_agent
 
 # Configure structured logging
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+# Logging is configured centrally in backend/main.py
 logger = logging.getLogger("WorkflowOrchestrator")
 
 def _log_print(text: str = ""):
@@ -145,6 +145,17 @@ def run_patentscout_pipeline(domain: str) -> Dict[str, Any]:
         _log_print(f"   * [{o.get('match_score')}% Match] {o.get('name')} ({o.get('category')}) - Funding: {safe_amount}")
 
 
+    # ── Step 8: Report Generation Agent ─────────────────────────────────
+    _log_print(f"\n[Step 8/8] Executing Agent 08: Report Generation Agent...")
+    from backend.report_agent.report_agent import report_agent
+    state = report_agent(state)
+    report_res = state.get("report_result", {})
+    if report_res and report_res.get("pdf_path"):
+        _log_print(f"[PASS] Report Generation Agent completed: PDF compiled at '{report_res['pdf_path']}'.")
+    else:
+        _log_print(f"[WARN] Report Generation Agent completed with warning: {report_res.get('error', 'PDF path unassigned.')}")
+    time.sleep(1.0)
+
     top_rec = state.get("top_recommendation") or (scores[0] if scores else {})
     if top_rec:
         _log_print("\n" + "=" * 70)
@@ -168,7 +179,8 @@ def run_patentscout_pipeline(domain: str) -> Dict[str, Any]:
         "patentability_scores": state.get("patentability_scores", []),
         "market_analysis": state.get("market_analysis", []),
         "funding_analysis": state.get("funding_analysis"),
-        "top_recommendation": top_rec
+        "top_recommendation": top_rec,
+        "report": report_res
     }
 
 

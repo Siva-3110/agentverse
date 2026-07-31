@@ -11,9 +11,30 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from backend.agents.workflow import run_patentscout_pipeline
 from backend.config import settings
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+# Database & Scheduler Imports
+from backend.database.database import engine, Base
+from backend.database import db_models
+from backend.services.scheduler_service import start_scheduler
+from backend.routers import auth_router, topics_router, notifications_router, reports_router, admin_router
+
+# ── Logging Setup (import-time) ──────────────────────────────────────────
+# NOTE: uvicorn calls logging.config.dictConfig() AFTER importing this app,
+# which would override any uvicorn.* logger settings made here.
+# The definitive fix is applied inside startup_event() below.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stdout
+)
 logger = logging.getLogger("FastAPIServer")
+
+
+# Create database tables automatically if missing
+try:
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database ORM tables initialized successfully.")
+except Exception as ex:
+    logger.error(f"Error initializing DB tables: {ex}")
 
 class MemoryLogHandler(logging.Handler):
     def __init__(self):
@@ -35,18 +56,56 @@ logging.getLogger().addHandler(memory_log_handler)
 
 app = FastAPI(
     title="PatentScout AI API",
-    description="REST backend for PatentScout AI multi-agent discovery pipeline",
+    description="REST backend for PatentScout AI multi-agent discovery & user management pipeline",
     version="1.0.0"
 )
 
 # Enable CORS for local frontend development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins in local dev
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include Authentication, Topics, Notifications, Reports, & Admin Routers
+app.include_router(auth_router.router)
+app.include_router(topics_router.router)
+app.include_router(notifications_router.router)
+app.include_router(reports_router.router)
+app.include_router(admin_router.router)
+
+# Start Auto Patent Watch Background Scheduler Thread
+@app.on_event("startup")
+def startup_event():
+    # ── Fix uvicorn access logging ────────────────────────────────────────
+    # This runs AFTER uvicorn has applied its own dictConfig, so our
+    # settings are final and won't be overridden.
+    _fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    _h = logging.StreamHandler(sys.stdout)
+    _h.setFormatter(_fmt)
+
+    for _name in ("uvicorn", "uvicorn.error", "uvicorn.access", "uvicorn.asgi"):
+        _lg = logging.getLogger(_name)
+        _lg.setLevel(logging.INFO)
+        # Remove duplicate handlers, then add our single stdout handler
+        _lg.handlers.clear()
+        _lg.addHandler(_h)
+        _lg.propagate = False   # stop double-printing via root
+
+    # Root logger also gets a clean stdout handler
+    _root = logging.getLogger()
+    _root.setLevel(logging.INFO)
+    _root.handlers.clear()
+    _root.addHandler(_h)
+
+    print("=" * 65, flush=True)
+    print("  PatentScout AI Backend  |  HTTP access logging: ACTIVE", flush=True)
+    print("  All requests will appear below as they arrive.", flush=True)
+    print("=" * 65, flush=True)
+
+    start_scheduler()
 
 class AnalyzeRequest(BaseModel):
     domain: str
@@ -54,15 +113,13 @@ class AnalyzeRequest(BaseModel):
 @app.get("/api/health")
 async def health_check():
     """
-    Endpoint 1: Health Monitoring
+    Health Check Endpoint.
     Verifies connection status of Gemini API, ChromaDB and agent imports.
     """
     logger.info("Executing System Health Check...")
     
-    # Check if Google API Key is configured
     gemini_ready = bool(settings.GOOGLE_API_KEY)
     
-    # Check if ChromaDB is installed and configuration dir is present
     chromadb_ready = False
     try:
         import chromadb
@@ -70,7 +127,6 @@ async def health_check():
     except ImportError:
         pass
         
-    # Verify imports of all 4 agents
     agents_ready = False
     try:
         from backend.agents.research_agent import research_agent
@@ -93,21 +149,11 @@ async def health_check():
 
 @app.get("/api/logs")
 def get_logs():
-    """
-    Endpoint 3: GET /api/logs
-    Returns recent logs stored in the MemoryLogHandler.
-    """
     return {"logs": memory_log_handler.logs}
 
 @app.post("/api/analyze")
 def analyze_domain(request: AnalyzeRequest):
-    """
-    Endpoint 2: POST /api/analyze
-    Receives domain query, runs the discovery workflow, and returns the real outputs.
-    """
-    # Clear the log buffer for a fresh run
     memory_log_handler.logs.clear()
-    
     logger.info(f"Received analysis request for domain: '{request.domain}'")
     
     if not request.domain or not request.domain.strip():

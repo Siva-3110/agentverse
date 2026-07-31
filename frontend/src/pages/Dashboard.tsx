@@ -1,988 +1,335 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { 
-  Search, Sparkles, AlertCircle, Lightbulb, ChevronRight, Loader2, ArrowRight,
-  CheckCircle2, Circle, ChevronDown, ChevronUp, Terminal, Database, BookOpen, BarChart3, ShieldAlert
+import { useNavigate } from "react-router-dom";
+import {
+  BookOpen, ShieldCheck, Target, Lightbulb, Scale, TrendingUp,
+  DollarSign, FileText, CheckCircle2, Clock, Cpu, ChevronRight,
+  Sparkles, Check, Layers, ArrowUpRight
 } from "lucide-react";
-import { startAnalysis, pollAnalysis, fetchBackendLogs } from "../services/api";
-import type { AnalysisState } from "../services/api";
-import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
-import { Badge } from "../components/ui/Badge";
-import { DomainActivityTimelineChart, TechnologyGapChart } from "../components/Visualizations";
 
-/* ─── Subtle neural canvas for the search workspace ─── */
-function NeuralCanvasBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+import Topbar from "../components/Topbar";
+import { useAgentExecution } from "../hooks/useAgentExecution";
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animationFrameId: number;
-    let width = (canvas.width = canvas.offsetWidth);
-    let height = (canvas.height = canvas.offsetHeight);
-
-    const particles: Array<{ x: number; y: number; vx: number; vy: number; r: number }> = [];
-    const numParticles = Math.min(50, Math.floor((width * height) / 20000));
-
-    for (let i = 0; i < numParticles; i++) {
-      particles.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        r: Math.random() * 1.5 + 0.8
-      });
-    }
-
-    const handleResize = () => {
-      if (!canvas) return;
-      width = canvas.width = canvas.offsetWidth;
-      height = canvas.height = canvas.offsetHeight;
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    const draw = () => {
-      ctx.clearRect(0, 0, width, height);
-      ctx.lineWidth = 0.4;
-
-      for (let i = 0; i < particles.length; i++) {
-        const p1 = particles[i];
-        for (let j = i + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-          if (dist < 110) {
-            const alpha = (1 - dist / 110) * 0.1;
-            ctx.strokeStyle = `rgba(99, 102, 241, ${alpha})`;
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        }
-      }
-
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        ctx.fillStyle = "rgba(6, 182, 212, 0.35)";
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (p.x < 0 || p.x > width) p.vx *= -1;
-        if (p.y < 0 || p.y > height) p.vy *= -1;
-      }
-
-      animationFrameId = requestAnimationFrame(draw);
-    };
-
-    draw();
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-40" />;
-}
-
-/* ─── Simulated log templates for agents ─── */
-const SIMULATED_LOG_TEMPLATES = {
-  research: [
-    "Connecting to OpenAlex (api.openalex.org)...",
-    "Querying arXiv repository for domain-specific publications...",
-    "Querying Semantic Scholar database...",
-    "Semantic Scholar rate-limit threshold detected. Retrying with exponential backoff...",
-    "arXiv search returned 50 unique papers.",
-    "OpenAlex search returned 14 unique papers.",
-    "De-duplicating global search records...",
-    "64 research papers discovered",
-    "Vectorizing research titles and abstracts using sentence transformers...",
-    "Indexing 64 papers into local ChromaDB 'research' collection...",
-    "Retrieving top 15 relevant research documents for landscape synthesis...",
-    "Research Agent analysis complete."
-  ],
-  patent: [
-    "Loading patent corpus from local source database...",
-    "Connecting to ChromaDB server...",
-    "Querying collection 'patent_global'...",
-    "Retrieved 1,450 matching patent vectors for domain...",
-    "Analyzing patent application trends...",
-    "Calculating patent saturation indexes...",
-    "Applying clustering algorithms on patent descriptors...",
-    "Generated 6 distinct patent clusters.",
-    "Formulating patent landscape matrix...",
-    "Executing Gemini model inference for cluster descriptions...",
-    "Successfully validated 6 patent clusters."
-  ],
-  gap: [
-    "Loading academic research topics & patent clusters...",
-    "Comparing research activity densities against patent clusters...",
-    "Evaluating technology space saturation thresholds...",
-    "Detecting high-priority opportunity vectors...",
-    "Calculating opportunity priority scores...",
-    "Identifying unpatented research pockets...",
-    "6 technology gaps detected",
-    "Evaluating commercial potential and feasibility...",
-    "Formulating technology gap matrix...",
-    "Gap analysis complete."
-  ],
-  innovation: [
-    "Analyzing priority gaps for candidate synthesis...",
-    "Synthesizing startup concepts...",
-    "Generating startup concept: 'SolidFlex Battery Optimizer'...",
-    "Generating startup concept: 'GridLink V2G Controller'...",
-    "Evaluating market viability and technical novelty...",
-    "Calculating novelty scores...",
-    "Filing candidate 'SolidFlex Battery Optimizer' score: 95% Novelty",
-    "Generating detailed potential benefits, core technologies...",
-    "3 innovation ideas generated",
-    "Innovation synthesis complete."
-  ],
-  patentability: [
-    "Retrieving generated startup concepts for novelty screening...",
-    "Querying local ChromaDB 'patent_global' collection for prior-art vectors...",
-    "Comparing candidate concepts against patent citations...",
-    "No direct prior art conflicts detected for candidate features.",
-    "Evaluating novel claims feasibility and filing feasibility...",
-    "Calculating final patentability scores...",
-    "Filing candidate safety validation complete.",
-    "Patentability verification complete."
-  ]
-};
-
-/* ─── Log router ─── */
-const parseAndRouteLogs = (logs: string[]) => {
-  const newLogs = {
-    research: [] as string[],
-    patent: [] as string[],
-    gap: [] as string[],
-    innovation: [] as string[],
-    patentability: [] as string[]
-  };
-  
-  let currentTarget: "research" | "patent" | "gap" | "innovation" | "patentability" = "research";
-  
-  logs.forEach(line => {
-    if (line.includes("Executing Agent 01") || line.includes("ResearchAgent") || line.includes("Research Fetcher") || line.includes("ResearchFetcher")) {
-      currentTarget = "research";
-    } else if (line.includes("Executing Agent 02") || line.includes("PatentAgent") || line.includes("Patent Fetcher") || line.includes("PatentFetcher")) {
-      currentTarget = "patent";
-    } else if (line.includes("Executing Agent 03") || line.includes("GapAnalysisAgent") || line.includes("Gap Analysis Agent")) {
-      currentTarget = "gap";
-    } else if (line.includes("Executing Agent 04") || line.includes("InnovationAgent") || line.includes("Innovation Agent")) {
-      currentTarget = "innovation";
-    } else if (line.includes("Executing Agent 05") || line.includes("PatentabilityAgent") || line.includes("Patentability Agent")) {
-      currentTarget = "patentability";
-    }
-    
-    let displayLine = line;
-    const match = line.match(/(\d{2}:\d{2}:\d{2}),\d{3}\s\[\w+\]\s(.*)/);
-    if (match) {
-      displayLine = `[${match[1]}] ${match[2]}`;
-    }
-    
-    newLogs[currentTarget].push(displayLine);
-  });
-  
-  return newLogs;
-};
-
-const getActiveAgentFromLogs = (logs: string[]): "research" | "patent" | "gap_analysis" | "innovation" | "patentability" | "completed" => {
-  let active: "research" | "patent" | "gap_analysis" | "innovation" | "patentability" | "completed" = "research";
-  logs.forEach(line => {
-    if (line.includes("Executing Agent 01") || line.includes("Starting Research Agent execution...")) {
-      active = "research";
-    } else if (line.includes("Executing Agent 02")) {
-      active = "patent";
-    } else if (line.includes("Executing Agent 03")) {
-      active = "gap_analysis";
-    } else if (line.includes("Executing Agent 04")) {
-      active = "innovation";
-    } else if (line.includes("Executing Agent 05")) {
-      active = "patentability";
-    }
-  });
-  return active;
-};
-
-/* ─── Agent configuration ─── */
-const AGENT_DEFS = [
-  {
-    id: "research" as const,
-    name: "Research Agent",
-    title: "Academic Publication & Ingestion",
-    desc: "Fetches publications from arXiv, Semantic Scholar, and OpenAlex, de-duplicates and indexes academic context in ChromaDB.",
-    icon: BookOpen,
-    getMetrics: (state: AnalysisState | null) => `${state?.papers_analyzed || 64} papers discovered`,
-    getLocalProgress: (prog: number) => Math.min(100, Math.max(0, Math.floor(((prog - 10) / 20) * 100)))
-  },
-  {
-    id: "patent" as const,
-    name: "Patent Agent",
-    title: "Patent Landscape Modeling & Clustering",
-    desc: "Queries database collections, vectorizes patent entries, and runs K-means grouping to outline structural patent barriers.",
-    icon: Database,
-    getMetrics: (state: AnalysisState | null) => `${state?.patents_analyzed || 1450} patents mapped · 6 clusters`,
-    getLocalProgress: (prog: number) => Math.min(100, Math.max(0, Math.floor(((prog - 30) / 25) * 100)))
-  },
-  {
-    id: "gap" as const,
-    name: "Gap Analysis Agent",
-    title: "Discovers Unpatented White Space Gaps",
-    desc: "Contrasts academic publication density with commercial patent clusters to find technology gaps with high commercial promise.",
-    icon: BarChart3,
-    getMetrics: () => "6 technology gaps detected",
-    getLocalProgress: (prog: number) => Math.min(100, Math.max(0, Math.floor(((prog - 55) / 20) * 100)))
-  },
-  {
-    id: "innovation" as const,
-    name: "Innovation Agent",
-    title: "Startup Candidate & Filing Spec Synthesis",
-    desc: "Generates novel product and system concepts based on priority gaps, validating technical specs, market potential, and novelty.",
-    icon: Lightbulb,
-    getMetrics: () => "3 innovation ideas generated",
-    getLocalProgress: (prog: number) => Math.min(100, Math.max(0, Math.floor(((prog - 75) / 15) * 100)))
-  },
-  {
-    id: "patentability" as const,
-    name: "Patentability Agent",
-    title: "Novelty & Prior-Art Assessment",
-    desc: "Performs instant risk checking and prior-art scoring to validate novelty and calculate priority ranking for generated concepts.",
-    icon: ShieldAlert,
-    getMetrics: () => "Novelty checks complete",
-    getLocalProgress: (prog: number) => Math.min(100, Math.max(0, Math.floor(((prog - 90) / 9) * 100)))
-  }
+const PIPELINE_STEPS = [
+  { id: 1, name: "Research Intelligence", key: "RESEARCH", icon: BookOpen, desc: "OpenAlex & arXiv Ingestion" },
+  { id: 2, name: "Patent Landscape", key: "PATENT", icon: ShieldCheck, desc: "ChromaDB & USPTO Prior Art" },
+  { id: 3, name: "Gap Analysis", key: "GAP", icon: Target, desc: "White Space Detection" },
+  { id: 4, name: "Innovation Architect", key: "INNOVATION", icon: Lightbulb, desc: "Patent-Ready Synthesis" },
+  { id: 5, name: "Patentability Assessment", key: "PATENTABILITY", icon: Scale, desc: "35 U.S.C. § 102/103 Scoring" },
+  { id: 6, name: "Market Intelligence", key: "MARKET", icon: TrendingUp, desc: "Google Trends & RSS Velocity" },
+  { id: 7, name: "Funding Pathfinder", key: "FUNDING", icon: DollarSign, desc: "BIRAC & YC Grant Matching" },
 ];
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*                        DASHBOARD                               */
-/* ═══════════════════════════════════════════════════════════════ */
+const INTELLIGENT_MODELS = [
+  { name: "Groq Llama 3.3", type: "LLM Orchestrator", status: "Active", tag: "Fast Inference" },
+  { name: "ChromaDB Vector Store", type: "Embedding Store", status: "Connected", tag: "Vector Index" },
+  { name: "Tavily", type: "Deep Web Search", status: "Ready", tag: "Web Scraper" },
+  { name: "Firecrawl", type: "Portal Crawler", status: "Active", tag: "Grant Extraction" },
+  { name: "Crossref", type: "DOI Index", status: "Connected", tag: "Journal Metadata" },
+];
+
+const NAVIGATION_CARDS = [
+  { label: "Research Intelligence", path: "/research", icon: BookOpen, color: "text-blue-600", bg: "bg-blue-50 border-blue-200", desc: "140+ academic literature papers & citation strength analysis" },
+  { label: "Patent Landscape", path: "/patents", icon: ShieldCheck, color: "text-violet-600", bg: "bg-violet-50 border-violet-200", desc: "USPTO & WIPO assignee clusters, density mapping & prior art" },
+  { label: "Gap Analysis", path: "/gaps", icon: Target, color: "text-amber-600", bg: "bg-amber-50 border-amber-200", desc: "Unpatented high-value white space opportunities & scoring" },
+  { label: "Innovation Architect", path: "/innovation", icon: Lightbulb, color: "text-pink-600", bg: "bg-pink-50 border-pink-200", desc: "Patent-ready concept claims, block specs & OEM blueprints" },
+  { label: "Patentability Assessment", path: "/patentability", icon: Scale, color: "text-red-600", bg: "bg-red-50 border-red-200", desc: "35 U.S.C. § 102/103 novelty, non-obviousness & legal risk" },
+  { label: "Market Intelligence", path: "/market", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200", desc: "Google Trends velocity, GitHub commit trends & enterprise RSS" },
+  { label: "Funding Pathfinder", path: "/funding", icon: DollarSign, color: "text-orange-600", bg: "bg-orange-50 border-orange-200", desc: "BIRAC, YC, Startup India & non-dilutive grant matching" },
+  { label: "Executive Report", path: "/report", icon: FileText, color: "text-slate-700", bg: "bg-slate-100 border-slate-300", desc: "Complete PDF-ready executive summary & strategic action plan" },
+];
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { analysisResults, selectedDomain, dailyResearchPaperCount, dailyPatentCount } = useAgentExecution();
 
-  const [domainInput, setDomainInput] = useState("");
-  const [sessionState, setSessionState] = useState<AnalysisState | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [latestData, setLatestData] = useState<AnalysisState | null>(null);
+  const domainName = selectedDomain || analysisResults?.domain || "Electric Vehicles";
 
-  const [agentLogs, setAgentLogs] = useState<{
-    research: string[];
-    patent: string[];
-    gap: string[];
-    innovation: string[];
-    patentability: string[];
-  }>({ research: [], patent: [], gap: [], innovation: [], patentability: [] });
+  // Global Cumulative Daily Statistics (Accumulates across all domain searches today)
+  const researchPapersCount = `${dailyResearchPaperCount} Papers`;
+  const patentsCount = `${dailyPatentCount} Patents`;
 
-  // Which agents are visible in the pipeline (revealed progressively)
-  const [visibleAgents, setVisibleAgents] = useState<Set<string>>(new Set());
+  const formattedDateTime = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 
-  const [expandedCards, setExpandedCards] = useState<{
-    research: boolean; patent: boolean; gap: boolean; innovation: boolean; patentability: boolean;
-  }>({ research: true, patent: false, gap: false, innovation: false, patentability: false });
+  return (
+    <div className="flex flex-col h-full bg-[#F8FAFC]">
+      <Topbar title="Summary Dashboard" subtitle={`Complete overview of the latest PatentScout AI autonomous analysis.`} />
 
-  const terminalsRef = useRef<Record<string, HTMLDivElement | null>>({});
-  const logIntervalRef = useRef<any>(null);
-  const logsRef = useRef(agentLogs);
+      <main className="flex-1 overflow-y-auto px-8 py-7 space-y-8 max-w-[1440px] mx-auto w-full">
 
-  useEffect(() => { logsRef.current = agentLogs; }, [agentLogs]);
-
-  // Auto-scroll expanded terminals
-  useEffect(() => {
-    Object.keys(expandedCards).forEach(key => {
-      if (expandedCards[key as keyof typeof expandedCards]) {
-        const el = terminalsRef.current[key];
-        if (el) el.scrollTop = el.scrollHeight;
-      }
-    });
-  }, [agentLogs, expandedCards]);
-
-  const exampleDomains = [
-    "Solid-State Batteries",
-    "AI Drug Discovery",
-    "Smart Cities",
-    "Quantum Computing",
-    "Renewable Energy"
-  ];
-
-  /* ─── Helper: make an agent visible ─── */
-  const revealAgent = (id: string) => {
-    setVisibleAgents(prev => new Set([...prev, id]));
-  };
-
-  /* ─── Start log polling interval ─── */
-  const startLogInterval = () => {
-    if (logIntervalRef.current) clearInterval(logIntervalRef.current);
-    
-    logIntervalRef.current = setInterval(async () => {
-      const realLogs = await fetchBackendLogs();
-      
-      if (realLogs && realLogs.length > 0) {
-        const parsed = parseAndRouteLogs(realLogs);
-        setAgentLogs(parsed);
-        
-        const currentActive = getActiveAgentFromLogs(realLogs);
-        let progress = 15;
-        if (currentActive === "patent") progress = 45;
-        if (currentActive === "gap_analysis") progress = 70;
-        if (currentActive === "innovation") progress = 88;
-        if (currentActive === "patentability") progress = 95;
-        
-        // Reveal agents progressively
-        const activeKey = currentActive === "gap_analysis" ? "gap" : currentActive;
-        revealAgent(activeKey);
-        
-        setSessionState(prev => {
-          if (!prev) return null;
-          setExpandedCards(exp => {
-            if (exp[activeKey as keyof typeof exp]) return exp;
-            return {
-              research: activeKey === "research",
-              patent: activeKey === "patent",
-              gap: activeKey === "gap",
-              innovation: activeKey === "innovation",
-              patentability: activeKey === "patentability"
-            };
-          });
-          return { ...prev, activeAgent: currentActive, progress };
-        });
-      } else {
-        // Simulated fallback
-        setSessionState(prev => {
-          if (!prev) return null;
-          const currentAgent = prev.activeAgent;
-          const currentAgentKey = currentAgent === "gap_analysis" ? "gap" : currentAgent;
-          if (currentAgent === "completed") return prev;
-
-          const templates = SIMULATED_LOG_TEMPLATES[currentAgentKey as keyof typeof SIMULATED_LOG_TEMPLATES];
-          if (!templates) return prev;
-
-          const currentLogs = logsRef.current[currentAgentKey as keyof typeof logsRef.current] || [];
-
-          if (currentLogs.length < templates.length) {
-            const nextLine = templates[currentLogs.length];
-            const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-            const formatted = `[${timeStr}] ${nextLine}`;
-            setAgentLogs(l => ({ ...l, [currentAgentKey]: [...l[currentAgentKey as keyof typeof l], formatted] }));
-
-            let baseProgress = 10, span = 20;
-            if (currentAgent === "research") { baseProgress = 10; span = 20; }
-            else if (currentAgent === "patent") { baseProgress = 30; span = 25; }
-            else if (currentAgent === "gap_analysis") { baseProgress = 55; span = 20; }
-            else if (currentAgent === "innovation") { baseProgress = 75; span = 15; }
-            else if (currentAgent === "patentability") { baseProgress = 90; span = 9; }
-
-            return { ...prev, progress: baseProgress + Math.floor((currentLogs.length / templates.length) * span) };
-          } else {
-            // Transition to next agent
-            type AgentKey = "idle" | "research" | "patent" | "gap_analysis" | "innovation" | "patentability" | "completed";
-            let nextAgent: AgentKey = "research";
-            let nextProgress = 30;
-            if (currentAgent === "research") { nextAgent = "patent"; nextProgress = 30; }
-            else if (currentAgent === "patent") { nextAgent = "gap_analysis"; nextProgress = 55; }
-            else if (currentAgent === "gap_analysis") { nextAgent = "innovation"; nextProgress = 75; }
-            else if (currentAgent === "innovation") { nextAgent = "patentability"; nextProgress = 90; }
-            else if (currentAgent === "patentability") { nextAgent = "completed"; nextProgress = 100; }
-
-            const nextAgentKey = nextAgent === "gap_analysis" ? "gap" : nextAgent;
-            if (nextAgentKey !== "completed") {
-              revealAgent(nextAgentKey);
-              setExpandedCards({
-                research: nextAgentKey === "research",
-                patent: nextAgentKey === "patent",
-                gap: nextAgentKey === "gap",
-                innovation: nextAgentKey === "innovation",
-                patentability: nextAgentKey === "patentability"
-              });
-            }
-            return { ...prev, activeAgent: nextAgent, progress: nextProgress };
-          }
-        });
-      }
-    }, 850);
-  };
-
-  /* ─── Restore in-progress session on mount ─── */
-  useEffect(() => {
-    const activeSessionId = localStorage.getItem("active_session_id");
-    if (activeSessionId) {
-      setLoading(true);
-      const activeDomain = localStorage.getItem("active_domain") || "Technology Domain";
-      setSessionState({ domain: activeDomain, status: "running", activeAgent: "research", progress: 15, research_topics: [], patent_clusters: [], gap_matrix: [], innovation_ideas: [] });
-      setAgentLogs({ research: [], patent: [], gap: [], innovation: [], patentability: [] });
-      setVisibleAgents(new Set(["research"]));
-      setExpandedCards({ research: true, patent: false, gap: false, innovation: false, patentability: false });
-      startLogInterval();
-      pollSession(activeSessionId);
-    }
-
-    const cached = localStorage.getItem("latest_results");
-    if (cached) {
-      try { setLatestData(JSON.parse(cached)); } catch (err) { console.error(err); }
-    }
-
-    return () => { if (logIntervalRef.current) clearInterval(logIntervalRef.current); };
-  }, []);
-
-  /* ─── Main analysis trigger ─── */
-  const handleStartAnalysis = async (domain: string) => {
-    if (!domain.trim()) return;
-    setLoading(true);
-    setLatestData(null);
-    localStorage.setItem("active_domain", domain);
-
-    const initialState: AnalysisState = {
-      domain, status: "running", activeAgent: "research", progress: 10,
-      research_topics: [], patent_clusters: [], gap_matrix: [], innovation_ideas: []
-    };
-    setSessionState(initialState);
-    setAgentLogs({ research: [], patent: [], gap: [], innovation: [], patentability: [] });
-
-    // Start with only Research Agent visible
-    setVisibleAgents(new Set(["research"]));
-    setExpandedCards({ research: true, patent: false, gap: false, innovation: false, patentability: false });
-
-    startLogInterval();
-
-    try {
-      const res = await startAnalysis(domain);
-      
-      if (res.isRealBackend && res.result) {
-        if (logIntervalRef.current) { clearInterval(logIntervalRef.current); logIntervalRef.current = null; }
-        
-        const finalLogs = await fetchBackendLogs();
-        if (finalLogs && finalLogs.length > 0) {
-          const parsed = parseAndRouteLogs(finalLogs);
-          setAgentLogs(parsed);
-        }
-
-        const completedState = res.result;
-
-        // Reveal all agents as completed, then show patentability
-        setVisibleAgents(new Set(["research", "patent", "gap", "innovation", "patentability"]));
-        setSessionState(prev => prev ? { ...prev, activeAgent: "patentability", progress: 95 } : null);
-        setExpandedCards({ research: false, patent: false, gap: false, innovation: false, patentability: true });
-
-        // Simulate patentability log stream
-        const templates = SIMULATED_LOG_TEMPLATES.patentability;
-        for (let i = 0; i < templates.length; i++) {
-          await new Promise(resolve => setTimeout(resolve, 350));
-          const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-          setAgentLogs(l => ({ ...l, patentability: [...l.patentability, `[${timeStr}] ${templates[i]}`] }));
-        }
-
-        setSessionState(completedState);
-        setLatestData(completedState);
-        setLoading(false);
-        localStorage.setItem("latest_results", JSON.stringify(completedState));
-      } else {
-        localStorage.setItem("active_session_id", res.session_id);
-        pollSession(res.session_id);
-      }
-    } catch (err) {
-      if (logIntervalRef.current) { clearInterval(logIntervalRef.current); logIntervalRef.current = null; }
-      setLoading(false);
-    }
-  };
-
-  const pollSession = (sessionId: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const state = await pollAnalysis(sessionId);
-        setSessionState(state);
-        localStorage.setItem("latest_results", JSON.stringify(state));
-        
-        if (state.status === "completed") {
-          clearInterval(interval);
-          if (logIntervalRef.current) { clearInterval(logIntervalRef.current); logIntervalRef.current = null; }
-          setLoading(false);
-          setLatestData(state);
-          localStorage.removeItem("active_session_id");
-        } else if (state.status === "error") {
-          clearInterval(interval);
-          if (logIntervalRef.current) { clearInterval(logIntervalRef.current); logIntervalRef.current = null; }
-          setLoading(false);
-          localStorage.removeItem("active_session_id");
-        }
-      } catch (err) {
-        clearInterval(interval);
-        if (logIntervalRef.current) { clearInterval(logIntervalRef.current); logIntervalRef.current = null; }
-        setLoading(false);
-        localStorage.removeItem("active_session_id");
-      }
-    }, 1500);
-  };
-
-  // Auto-start from landing page
-  useEffect(() => {
-    const state = location.state as { autoStartDomain?: string } | null;
-    if (state?.autoStartDomain) {
-      const domain = state.autoStartDomain;
-      setDomainInput(domain);
-      navigate(location.pathname, { replace: true, state: {} });
-      handleStartAnalysis(domain);
-    }
-  }, [location, navigate]);
-
-  // KPI count animation
-  const [countPapers, setCountPapers] = useState(0);
-  const [countClusters, setCountClusters] = useState(0);
-  const [countGaps, setCountGaps] = useState(0);
-  const [countIdeas, setCountIdeas] = useState(0);
-
-  useEffect(() => {
-    if (latestData) {
-      const tp = latestData.papers_analyzed || 83;
-      const tc = latestData.patent_clusters.length || 7;
-      const tg = latestData.gap_matrix.length || 7;
-      const ti = latestData.innovation_ideas.length || 3;
-      let p = 0, c = 0, g = 0, id = 0;
-      const timer = setInterval(() => {
-        let updated = false;
-        if (p < tp) { p += Math.ceil(tp / 10); if (p > tp) p = tp; updated = true; }
-        if (c < tc) { c += 1; updated = true; }
-        if (g < tg) { g += 1; updated = true; }
-        if (id < ti) { id += 1; updated = true; }
-        setCountPapers(p); setCountClusters(c); setCountGaps(g); setCountIdeas(id);
-        if (!updated) clearInterval(timer);
-      }, 50);
-      return () => clearInterval(timer);
-    }
-  }, [latestData]);
-
-  const getAgentStatus = (agentName: "research" | "patent" | "gap" | "innovation" | "patentability") => {
-    if (!sessionState) return "pending";
-    if (sessionState.activeAgent === "completed") return "completed";
-    const currentAgent = sessionState.activeAgent;
-    const order = ["research", "patent", "gap", "innovation", "patentability"];
-    const currentIdx = order.findIndex(o => o === "gap" ? currentAgent === "gap_analysis" : currentAgent === o);
-    const targetIdx = order.indexOf(agentName);
-    if (currentIdx > targetIdx) return "completed";
-    if (currentIdx === targetIdx) return "running";
-    return "pending";
-  };
-
-  /* ═══════════ STATE 1: IDLE SEARCH WORKSPACE (!latestData && !loading) ═══════════ */
-  if (!latestData && !loading) {
-    return (
-      <div className="relative min-h-[85vh] flex flex-col items-center justify-center px-6 py-12">
-        <NeuralCanvasBackground />
-
-        <div className="relative z-10 w-full max-w-2xl mx-auto text-center space-y-8 animate-fade-in">
-          
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-500/25 bg-indigo-500/8 backdrop-blur-sm text-[10px] font-bold text-indigo-300 uppercase tracking-widest">
-            <Sparkles className="w-3 h-3 animate-pulse" />
-            <span>Autonomous Innovation Engine</span>
-          </div>
-
-          {/* Headline */}
-          <div className="space-y-4">
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
-              Analyze Any{" "}
-              <span className="bg-gradient-to-r from-indigo-300 via-purple-300 to-cyan-300 bg-clip-text text-transparent">
-                Technology Domain
-              </span>
+        {/* ── SECTION 1: Page Title & Subtitle ── */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-[26px] font-extrabold text-slate-900 tracking-tight font-['Space_Grotesk',sans-serif]">
+              Summary Dashboard
             </h1>
-            <p className="text-zinc-400 text-sm md:text-base leading-relaxed max-w-xl mx-auto">
-              Enter a technology domain, emerging technology, or research area. PatentScout AI will analyze research activity, patent landscapes, technology gaps, innovation opportunities, and patentability potential.
-            </p>
+            <span className="px-3 py-1 rounded-full text-[12px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Mission Completed
+            </span>
+          </div>
+          <p className="text-[14px] text-slate-500 font-medium">
+            Complete overview of the latest PatentScout AI autonomous analysis.
+          </p>
+        </div>
+
+        {/* ── SECTION 2: TOP SUMMARY CARDS (DYNAMIC LIGHT GREEN WITH INTERIOR DESIGN) ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Card 1: Research Papers Retrieved Today */}
+          <div className="bg-[#ECFDF5] border border-emerald-200/90 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            {/* Interior Pattern & Radial Glow */}
+            <div className="absolute inset-0 opacity-40 pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(16, 185, 129, 0.06) 8px, rgba(16, 185, 129, 0.06) 9px)" }} />
+            <div className="absolute -top-10 -right-10 w-36 h-36 bg-emerald-400/20 rounded-full blur-2xl group-hover:bg-emerald-400/30 transition-colors pointer-events-none" />
+
+            <div className="flex items-start justify-between relative z-10">
+              <div>
+                <p className="text-[13px] font-extrabold text-emerald-800 uppercase tracking-wider">
+                  Research Papers Retrieved Today
+                </p>
+                <h3 className="text-[36px] font-extrabold text-emerald-950 mt-2 tracking-tight font-['Space_Grotesk',sans-serif]">
+                  {researchPapersCount}
+                </h3>
+                <p className="text-[12px] font-bold text-emerald-700 mt-1.5 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Dynamic Ingestion · OpenAlex & arXiv
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-[18px] bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-900/15 flex-shrink-0">
+                <BookOpen className="w-6 h-6" />
+              </div>
+            </div>
           </div>
 
-          {/* Search Box */}
-          <Card className="p-3 glass-card border border-white/10 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-            <div className="flex items-center gap-2">
-              <Search className="ml-2 w-4 h-4 text-zinc-400 flex-shrink-0" />
-              <input
-                type="text"
-                value={domainInput}
-                onChange={e => setDomainInput(e.target.value)}
-                placeholder="e.g. Solid-State Batteries, AI Drug Discovery, Smart Cities..."
-                className="flex-1 h-12 bg-transparent border-none pl-2 pr-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none"
-                onKeyDown={e => e.key === "Enter" && handleStartAnalysis(domainInput)}
-                autoFocus
-              />
-              <Button
-                onClick={() => handleStartAnalysis(domainInput)}
-                disabled={!domainInput.trim()}
-                className="h-10 font-bold text-sm px-6 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-500/25 border border-indigo-400/20 flex-shrink-0 rounded-xl"
-              >
-                Analyze
-              </Button>
-            </div>
-          </Card>
+          {/* Card 2: Patents Retrieved Today */}
+          <div className="bg-[#ECFDF5] border border-emerald-200/90 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            {/* Interior Pattern & Radial Glow */}
+            <div className="absolute inset-0 opacity-40 pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(16, 185, 129, 0.06) 8px, rgba(16, 185, 129, 0.06) 9px)" }} />
+            <div className="absolute -top-10 -right-10 w-36 h-36 bg-emerald-400/20 rounded-full blur-2xl group-hover:bg-emerald-400/30 transition-colors pointer-events-none" />
 
-          {/* Example links */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="text-[10px] text-zinc-600 font-semibold uppercase tracking-wider">Try:</span>
-            {exampleDomains.map(domain => (
-              <button
-                key={domain}
-                type="button"
-                onClick={() => {
-                  setDomainInput(domain);
-                  handleStartAnalysis(domain);
-                }}
-                className="px-3 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] hover:bg-indigo-500/10 hover:border-indigo-500/25 text-[11px] text-zinc-400 hover:text-indigo-300 transition-all duration-200 font-medium"
+            <div className="flex items-start justify-between relative z-10">
+              <div>
+                <p className="text-[13px] font-extrabold text-emerald-800 uppercase tracking-wider">
+                  Patents Retrieved Today
+                </p>
+                <h3 className="text-[36px] font-extrabold text-emerald-950 mt-2 tracking-tight font-['Space_Grotesk',sans-serif]">
+                  {patentsCount}
+                </h3>
+                <p className="text-[12px] font-bold text-emerald-700 mt-1.5 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Dynamic Collection · USPTO & ChromaDB
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-[18px] bg-emerald-700 text-white flex items-center justify-center shadow-md shadow-emerald-900/15 flex-shrink-0">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SECTION 3: CURRENT ANALYZED DOMAIN (DARK HATCHED WORKSPACE CARD) ── */}
+        <div className="card-hatched-hero p-7 border border-emerald-500/20 shadow-xl relative overflow-hidden">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-emerald-800/60">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-emerald-300/80 uppercase tracking-widest font-['Inter',sans-serif]">
+                  CURRENT TECHNOLOGY DOMAIN
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-400/15 border border-emerald-400/30 text-emerald-300 font-bold text-[10.5px]">
+                  ACTIVE DOMAIN
+                </span>
+              </div>
+              <h2 className="text-[32px] font-extrabold text-white tracking-tight font-['Space_Grotesk',sans-serif]">
+                {domainName}
+              </h2>
+            </div>
+
+            {/* Status Pill Badge */}
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2.5 rounded-[16px] bg-emerald-950/80 border border-emerald-500/40 text-white flex items-center gap-3 shadow-lg backdrop-blur-md">
+                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-extrabold shadow-sm">
+                  ✓
+                </div>
+                <div>
+                  <div className="text-[13px] font-extrabold text-white leading-tight">Mission Completed Successfully</div>
+                  <div className="text-[11px] font-semibold text-emerald-300">7 / 7 Autonomous Agents Finished</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Details Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-[14px] bg-white/10 border border-white/15 flex items-center justify-center text-emerald-300">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10.5px] font-bold text-emerald-300/70 uppercase tracking-wider">SWARM STATUS</p>
+                <p className="text-[14px] font-extrabold text-white">7 / 7 Agents Completed</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-[14px] bg-white/10 border border-white/15 flex items-center justify-center text-emerald-300">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10.5px] font-bold text-emerald-300/70 uppercase tracking-wider">EXECUTION DURATION</p>
+                <p className="text-[14px] font-extrabold text-white">3m 05s Total</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-[14px] bg-white/10 border border-white/15 flex items-center justify-center text-emerald-300">
+                <Sparkles className="w-5 h-5 text-emerald-300" />
+              </div>
+              <div>
+                <p className="text-[10.5px] font-bold text-emerald-300/70 uppercase tracking-wider">ANALYSIS DATE & TIME</p>
+                <p className="text-[14px] font-extrabold text-white">{formattedDateTime}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SECTION 4: AGENT PIPELINE SUMMARY ── */}
+        <div className="bg-white border border-slate-200/90 rounded-[24px] p-7 shadow-sm space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-[18px] font-bold text-slate-900 tracking-tight font-['Space_Grotesk',sans-serif]">
+                Agent Pipeline Summary
+              </h3>
+              <p className="text-[13px] text-slate-500 font-medium mt-0.5">
+                All 7 specialized AI agents executed in sequence and generated complete intelligence.
+              </p>
+            </div>
+            <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[12px] font-bold border border-emerald-200 flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-600" /> 100% Pipeline Verified
+            </span>
+          </div>
+
+          {/* Clean Horizontal Stepper (All Completed, No Animations) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 pt-2">
+            {PIPELINE_STEPS.map((step) => {
+              return (
+                <div
+                  key={step.id}
+                  className="rounded-[18px] p-3.5 bg-emerald-50/60 border border-emerald-200/80 flex flex-col justify-between space-y-3 shadow-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center font-bold text-[12px]">
+                      ✓
+                    </div>
+                    <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">
+                      Agent 0{step.id}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-[12px] font-bold text-slate-900 leading-snug line-clamp-1">
+                      {step.name}
+                    </div>
+                    <div className="text-[10.5px] font-medium text-emerald-700 mt-0.5">
+                      ✓ Completed
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── SECTION 5: INTELLIGENT MODELS USED (EXACTLY 5 ENGINES) ── */}
+        <div className="bg-white border border-slate-200/90 rounded-[24px] p-7 shadow-sm space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-[14px] bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
+              <Cpu className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-[18px] font-bold text-slate-900 tracking-tight font-['Space_Grotesk',sans-serif]">
+                Intelligent Models & Integration Engines
+              </h3>
+              <p className="text-[13px] text-slate-500 font-medium">
+                AI LLMs, vector embedding stores, and real-time database connections active in this analysis.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            {INTELLIGENT_MODELS.map((model, idx) => (
+              <div
+                key={idx}
+                className="bg-slate-50/80 border border-slate-200/80 rounded-[16px] p-3.5 space-y-2 hover:border-emerald-300 transition-colors"
               >
-                {domain}
-              </button>
+                <div className="flex items-center justify-between">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                    {model.status}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-[13px] font-extrabold text-slate-900 leading-tight">
+                    {model.name}
+                  </h4>
+                  <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                    {model.type}
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
-      </div>
-    );
-  }
 
-  /* ═══════════ STATE 2: RUNNING PIPELINE (!latestData && loading) ═══════════ */
-  if (!latestData && loading) {
-    return (
-      <div className="space-y-6 max-w-4xl mx-auto py-6 relative animate-fade-in">
-
-        {/* Pipeline Header */}
-        <Card className="p-5 glass-card border border-indigo-500/20 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-32 bg-gradient-to-bl from-indigo-500/8 to-transparent pointer-events-none rounded-tr-xl" />
-          <div className="relative z-10 flex items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-indigo-500/30 bg-indigo-500/8 text-[9px] font-bold text-indigo-400 uppercase tracking-wider">
-                <Sparkles className="w-3 h-3 animate-pulse" />
-                <span>Autonomous Pipeline Running</span>
-              </div>
-              <h2 className="text-xl font-extrabold text-white tracking-tight mt-1.5">
-                Analyzing:{" "}
-                <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-                  {sessionState?.domain || localStorage.getItem("active_domain")}
-                </span>
-              </h2>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <span className="text-2xl font-black text-indigo-400 font-mono">{sessionState?.progress || 0}%</span>
-              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Progress</p>
-            </div>
-          </div>
-          {/* Progress bar */}
-          <div className="w-full bg-[#05070e] border border-white/5 h-1.5 rounded-full overflow-hidden mt-4 shadow-inner">
-            <div
-              className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 rounded-full transition-all duration-500"
-              style={{ width: `${sessionState?.progress || 0}%` }}
-            />
-          </div>
-        </Card>
-
-        {/* Dynamic agent pipeline — only visible agents render */}
-        <div className="relative pl-12 space-y-4">
-          
-          {/* Vertical connector line */}
-          <div className="absolute left-[15px] top-5 bottom-5 w-[2px] bg-zinc-900 pointer-events-none rounded-full overflow-hidden">
-            <div
-              className="w-full bg-gradient-to-b from-emerald-500 via-indigo-500 to-transparent transition-all duration-700"
-              style={{
-                height: `${
-                  !sessionState ? "0%" :
-                  sessionState.activeAgent === "research" ? "10%" :
-                  sessionState.activeAgent === "patent" ? "30%" :
-                  sessionState.activeAgent === "gap_analysis" ? "50%" :
-                  sessionState.activeAgent === "innovation" ? "70%" :
-                  sessionState.activeAgent === "patentability" ? "90%" : "100%"
-                }`
-              }}
-            />
+        {/* ── SECTION 6: QUICK NAVIGATION ── */}
+        <div className="space-y-4 pt-2 pb-6">
+          <div>
+            <h3 className="text-[20px] font-bold text-slate-900 tracking-tight font-['Space_Grotesk',sans-serif]">
+              Quick Navigation
+            </h3>
+            <p className="text-[13.5px] text-slate-500 font-medium">
+              Explore in-depth results, charts, and blueprints generated by each agent.
+            </p>
           </div>
 
-          {AGENT_DEFS.filter(agent => visibleAgents.has(agent.id)).map(agent => {
-            const status = getAgentStatus(agent.id);
-            const isExpanded = expandedCards[agent.id];
-            const logs = agentLogs[agent.id];
-            const IconComp = agent.icon;
-
-            return (
-              <div key={agent.id} className="relative group transition-all duration-500 animate-fade-in">
-                {/* Status dot */}
-                <div className={`absolute left-[-48px] top-3.5 w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-500 z-10 ${
-                  status === "completed"
-                    ? "border-emerald-500/40 text-emerald-400 bg-emerald-950/20 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-                    : status === "running"
-                    ? "border-indigo-500/80 text-indigo-400 bg-indigo-950/35 shadow-[0_0_15px_rgba(99,102,241,0.25)] animate-ring-glow"
-                    : "border-zinc-800 text-zinc-600 bg-[#05070c]"
-                }`}>
-                  {status === "completed" ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : status === "running" ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Circle className="w-3.5 h-3.5 text-zinc-700" />
-                  )}
-                </div>
-
-                <Card className={`glass-card border p-5 transition-all duration-300 relative overflow-hidden ${
-                  status === "completed"
-                    ? "border-emerald-500/10 hover:border-emerald-500/20 bg-[#0A0D15]/60"
-                    : status === "running"
-                    ? "border-indigo-500/30 bg-[#0C101F]/80 shadow-[0_0_20px_rgba(99,102,241,0.06)]"
-                    : "border-white/5 bg-[#0B0D13]/10 opacity-50"
-                }`}>
-
-                  <div
-                    onClick={() => status !== "pending" && setExpandedCards(prev => ({ ...prev, [agent.id]: !prev[agent.id] }))}
-                    className={`flex items-start justify-between gap-4 select-none ${status !== "pending" ? "cursor-pointer" : ""}`}
-                  >
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <IconComp className={`w-4 h-4 ${status === "completed" ? "text-emerald-400" : status === "running" ? "text-indigo-400" : "text-zinc-600"}`} />
-                        <h3 className={`text-sm font-extrabold tracking-tight ${status === "completed" ? "text-emerald-400" : status === "running" ? "text-indigo-300" : "text-zinc-500"}`}>
-                          {agent.name}
-                        </h3>
-                        <span className="text-[10px] text-zinc-600">&bull;</span>
-                        <span className={`text-[10px] font-semibold ${status === "completed" ? "text-emerald-500/80" : status === "running" ? "text-indigo-400" : "text-zinc-600"}`}>
-                          {status === "completed" ? "Completed" : status === "running" ? "Running..." : "Idle"}
-                        </span>
-                      </div>
-                      <h4 className={`text-xs font-bold ${status === "pending" ? "text-zinc-500" : "text-white"}`}>{agent.title}</h4>
-                      <p className="text-[11px] text-zinc-500 max-w-3xl leading-relaxed">{agent.desc}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {NAVIGATION_CARDS.map((card, idx) => {
+              const IconComp = card.icon;
+              return (
+                <div
+                  key={idx}
+                  onClick={() => navigate(card.path)}
+                  className="bg-white border border-slate-200/90 rounded-[22px] p-5 shadow-xs hover:shadow-md hover:border-slate-300 transition-all cursor-pointer flex flex-col justify-between space-y-4 group"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className={`w-11 h-11 rounded-[16px] border ${card.bg} flex items-center justify-center ${card.color} shadow-xs`}>
+                      <IconComp className="w-5 h-5" />
                     </div>
-
-                    <div className="flex flex-col items-end justify-between gap-2">
-                      {status === "completed" && (
-                        <span className="text-[9px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded font-mono uppercase tracking-wider font-bold">
-                          {agent.getMetrics(sessionState)}
-                        </span>
-                      )}
-                      {status === "running" && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] bg-indigo-500/10 border border-indigo-500/25 text-indigo-400 px-2 py-0.5 rounded font-mono font-bold animate-pulse">
-                            {agent.getLocalProgress(sessionState?.progress || 0)}%
-                          </span>
-                          <span className="text-[9px] bg-zinc-900 border border-white/5 text-zinc-400 px-2.5 py-0.5 rounded font-mono uppercase tracking-wider font-semibold">
-                            Analyzing...
-                          </span>
-                        </div>
-                      )}
-                      {status !== "pending" && (
-                        <button type="button" className="text-zinc-500 hover:text-zinc-300 transition-colors p-1 flex items-center gap-1 mt-1 text-[10px] font-semibold">
-                          <Terminal className="w-3.5 h-3.5 text-zinc-500" />
-                          <span>{isExpanded ? "Hide Logs" : "Show Logs"}</span>
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5 ml-0.5" /> : <ChevronDown className="w-3.5 h-3.5 ml-0.5" />}
-                        </button>
-                      )}
+                    <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-emerald-500 group-hover:text-white text-slate-400 flex items-center justify-center transition-colors">
+                      <ArrowUpRight className="w-4 h-4" />
                     </div>
                   </div>
 
-                  {/* Local progress bar */}
-                  {status === "running" && (
-                    <div className="w-full bg-[#05070e] h-1 rounded-full overflow-hidden mt-3 shadow-inner">
-                      <div
-                        className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-300"
-                        style={{ width: `${agent.getLocalProgress(sessionState?.progress || 0)}%` }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Collapsible logs */}
-                  {isExpanded && status !== "pending" && (
-                    <div className="mt-4 border-t border-white/5 pt-4">
-                      <div className="flex items-center justify-between pb-2 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
-                        <span className="flex items-center gap-1.5"><Terminal className="w-3.5 h-3.5 text-indigo-400" />Execution Logs</span>
-                        <span className="font-mono text-indigo-400">{logs.length} Lines</span>
-                      </div>
-                      <div
-                        ref={el => { terminalsRef.current[agent.id] = el; }}
-                        className="p-4 rounded-lg bg-[#03050a] border border-white/5 font-mono text-[10px] text-zinc-400 h-44 overflow-y-auto space-y-1.5 scrollbar-thin shadow-inner"
-                      >
-                        {logs.length === 0 ? (
-                          <div className="text-zinc-600 italic animate-pulse py-1 flex items-center gap-1.5">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-600" />
-                            <span>Waiting for execution stream logs...</span>
-                          </div>
-                        ) : (
-                          logs.map((log, idx) => (
-                            <div key={idx} className="leading-relaxed hover:bg-white/5 py-0.5 px-1 rounded transition-colors break-all flex items-start gap-2 border-l border-l-transparent hover:border-l-indigo-500/50">
-                              <span className="text-indigo-500/70 select-none">&gt;</span>
-                              <span className="flex-1 whitespace-pre-wrap">{log}</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  /* ═══════════ STATE 3: RESULTS DASHBOARD (latestData && !loading) ═══════════ */
-  return (
-    <div className="space-y-8 max-w-5xl mx-auto py-4 relative animate-fade-in">
-      
-      {/* Compact search bar */}
-      <Card className="p-2.5 glass-card border border-white/10 relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/25 to-transparent" />
-        <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-2 border border-white/5 bg-[#05070e]/80 rounded-lg px-3 h-10">
-            <Search className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
-            <input
-              type="text"
-              value={domainInput}
-              onChange={e => setDomainInput(e.target.value)}
-              placeholder="Analyze another domain..."
-              className="flex-1 bg-transparent border-none text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none"
-              onKeyDown={e => e.key === "Enter" && handleStartAnalysis(domainInput)}
-            />
-            {latestData?.domain && (
-              <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400 bg-emerald-500/5 px-2 py-0 hidden sm:flex">
-                {latestData.domain}
-              </Badge>
-            )}
-          </div>
-          <Button
-            onClick={() => handleStartAnalysis(domainInput)}
-            disabled={!domainInput.trim()}
-            className="h-10 font-bold text-[11px] px-4 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:opacity-90 border border-indigo-400/20 rounded-lg flex-shrink-0"
-          >
-            Analyze
-          </Button>
-        </div>
-      </Card>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-5 bg-[#0D1117]/80 border glass-card kpi-glow-cyan flex flex-col justify-between h-28 relative overflow-hidden group hover:scale-[1.02] transition-transform">
-          <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">Research Papers</span>
-          <span className="text-3xl font-extrabold text-gradient-cyan tracking-tight mt-1">{countPapers}</span>
-          <div className="text-[9px] text-cyan-400 font-semibold flex items-center gap-1 mt-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 glow-dot-success" />
-            <span>Aggregated Sources</span>
-          </div>
-        </Card>
-
-        <Card className="p-5 bg-[#0D1117]/80 border glass-card kpi-glow-purple flex flex-col justify-between h-28 relative overflow-hidden group hover:scale-[1.02] transition-transform">
-          <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">Patent Clusters</span>
-          <span className="text-3xl font-extrabold text-gradient-purple tracking-tight mt-1">{countClusters}</span>
-          <div className="text-[9px] text-violet-400 font-semibold flex items-center gap-1 mt-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-            <span>Landscape Clusters</span>
-          </div>
-        </Card>
-
-        <Card className="p-5 bg-[#0D1117]/80 border glass-card kpi-glow-pink flex flex-col justify-between h-28 relative overflow-hidden group hover:scale-[1.02] transition-transform">
-          <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">Technology Gaps</span>
-          <span className="text-3xl font-extrabold text-gradient-pink tracking-tight mt-1">{countGaps}</span>
-          <div className="text-[9px] text-pink-400 font-semibold flex items-center gap-1 mt-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-pink-400" />
-            <span>Gaps Matrix</span>
-          </div>
-        </Card>
-
-        <Card className="p-5 bg-[#0D1117]/80 border glass-card kpi-glow-emerald flex flex-col justify-between h-28 relative overflow-hidden group hover:scale-[1.02] transition-transform">
-          <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">Innovation Ideas</span>
-          <span className="text-3xl font-extrabold text-gradient-emerald tracking-tight mt-1">{countIdeas}</span>
-          <div className="text-[9px] text-emerald-400 font-semibold flex items-center gap-1 mt-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span>Filing Candidates</span>
-          </div>
-        </Card>
-      </div>
-
-      {/* Visualizations */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 section-glow-purple pointer-events-none" />
-        
-        <Card className="p-5 bg-[#0D1117]/70 border glass-card space-y-4">
-          <div>
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Domain Activity Timeline</h4>
-            <p className="text-[9px] text-zinc-500">Academic momentum vs patent filings over time</p>
-          </div>
-          <DomainActivityTimelineChart domain={latestData?.domain} />
-        </Card>
-
-        <Card className="p-5 bg-[#0D1117]/70 border glass-card space-y-4">
-          <div>
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Technology Gap Priority Scores</h4>
-            <p className="text-[9px] text-zinc-500">Unpatented spaces ranked by relevance</p>
-          </div>
-          <TechnologyGapChart gaps={latestData!.gap_matrix} />
-        </Card>
-      </div>
-
-      {/* Preview section */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        
-        {/* Top Gap */}
-        <div className="lg:col-span-3 space-y-3">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-pink-400" />
-            Key Opportunity Gap
-          </h3>
-          {latestData!.gap_matrix.slice(0, 1).map(gap => (
-            <Card key={gap.area} className="p-5 bg-[#0D1117]/70 border-l-2 border-l-pink-500 border-t border-r border-b border-white/10 glass-card glow-border-pink space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[9px] py-0 border-pink-500/40 text-pink-300 bg-pink-500/5">#1 Gap Area</Badge>
-                    <h4 className="text-sm font-bold text-white">{gap.area}</h4>
+                  <div>
+                    <h4 className="text-[15px] font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                      {card.label}
+                    </h4>
+                    <p className="text-[12px] font-medium text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                      {card.desc}
+                    </p>
                   </div>
-                  <p className="text-zinc-400 text-xs leading-relaxed mt-1">{gap.rationale}</p>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center text-[12px] font-bold text-emerald-600 group-hover:translate-x-0.5 transition-transform">
+                    Open Stage Details <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                  </div>
                 </div>
-                <div className="p-2.5 rounded-lg bg-[#04060A] border border-white/5 flex flex-col justify-center text-center min-w-[60px]">
-                  <span className="text-lg font-bold text-gradient-pink">{gap.opportunity_score}</span>
-                  <span className="text-[8px] text-zinc-500 uppercase tracking-wide">Score</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 text-[10px] text-zinc-500 pt-2.5 border-t border-white/5">
-                <span>Research Activity: <strong className="text-emerald-400">{gap.research_activity}</strong></span>
-                <span>Patent Activity: <strong className="text-rose-400">{gap.patent_activity}</strong></span>
-              </div>
-            </Card>
-          ))}
-          <Button size="sm" variant="outline" onClick={() => navigate("/gaps")} className="w-full gap-1.5 text-xs border-white/10 bg-white/5 hover:bg-white/10">
-            <span>View Opportunity Gaps Matrix</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Top Innovation */}
-        <div className="lg:col-span-2 space-y-3">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <Lightbulb className="w-4 h-4 text-emerald-400" />
-            Featured Filing Candidate
-          </h3>
-          {latestData!.innovation_ideas.slice(0, 1).map((idea, index) => (
-            <Card key={idea.name} className="p-5 bg-[#0D1117]/70 border-l-2 border-l-emerald-500 border-t border-r border-b border-white/10 glass-card glow-border-emerald flex flex-col justify-between min-h-[160px]">
-              <div className="space-y-1">
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-sm font-bold text-white tracking-tight">{idea.name}</h4>
-                  <Badge variant="success" className="text-[9px] bg-emerald-500/10 border-emerald-500/20 text-emerald-400">{idea.novelty_score || 90}% Novel</Badge>
-                </div>
-                <p className="text-zinc-400 text-[11px] leading-relaxed pt-1.5">{idea.description}</p>
-              </div>
-              <div className="pt-4 flex items-center justify-between border-t border-white/5 mt-4">
-                <span className="text-[9px] text-zinc-500">Based on Gap: <strong className="text-zinc-300 truncate max-w-[120px] inline-block align-bottom">{idea.based_on_gap}</strong></span>
-                <Button size="sm" className="h-7 text-[10px] gap-1 px-3 bg-indigo-500 hover:bg-indigo-600 border border-indigo-400/20" onClick={() => navigate(`/innovation/${index}`)}>
-                  <span>View Specs</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-          <Button size="sm" variant="outline" onClick={() => navigate("/innovation")} className="w-full gap-1.5 text-xs border-white/10 bg-white/5 hover:bg-white/10">
-            <span>Browse Innovation Candidates</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

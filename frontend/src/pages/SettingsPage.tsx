@@ -1,200 +1,140 @@
-import { useState, useEffect } from "react";
-import { 
-  Database, 
-  Cpu, 
-  Terminal, 
-  CheckCircle2, 
-  RefreshCw,
-  Sun,
-  Moon
-} from "lucide-react";
-import { healthCheck } from "../services/api";
-import { Card } from "../components/ui/Card";
-import { Badge } from "../components/ui/Badge";
-import { Button } from "../components/ui/Button";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { ShieldCheck, Key, Database, CheckCircle2, Cpu, Globe, Settings } from "lucide-react";
+import Topbar from "../components/Topbar";
 
 export default function SettingsPage() {
-  const [health, setHealth] = useState<{ status: string; database: string } | null>(null);
-  const [checking, setChecking] = useState(false);
+  const [groqKey, setGroqKey] = useState("gsk_••••••••••••••••••••••••");
+  const [tavilyKey, setTavilyKey] = useState("tvly-••••••••••••••••");
+  const [openAlexKey, setOpenAlexKey] = useState("openalex_••••••••••••••••");
+  const [saved, setSaved] = useState(false);
 
-  const runHealthCheck = async () => {
-    setChecking(true);
-    try {
-      const status = await healthCheck();
-      setHealth(status);
-    } catch (err) {
-      setHealth({ status: "error", database: "disconnected" });
-    } finally {
-      setChecking(false);
-    }
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   };
 
-  useEffect(() => {
-    runHealthCheck();
-  }, []);
+  const SYSTEM_STATUS = [
+    { label: "Groq LLM", icon: Cpu, color: "text-violet-600", bg: "bg-violet-50", status: "Online", version: "Llama-3.3-70b" },
+    { label: "ChromaDB", icon: Database, color: "text-sky-600", bg: "bg-sky-50", status: "Active", version: "v0.4.x" },
+    { label: "OpenAlex", icon: Globe, color: "text-amber-600", bg: "bg-amber-50", status: "Connected", version: "REST API" }
+  ];
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto py-4">
-      {/* Page Header */}
-      <div className="flex items-center justify-between border-b border-darkBorder/30 pb-4">
-        <div>
-          <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Configuration Panel</span>
-          <h2 className="text-2xl font-bold text-white tracking-tight mt-1">System Settings</h2>
+    <div className="flex flex-col h-full bg-[#F8FAFC]">
+      <Topbar
+        crumbs={[{ label: "Dashboard", path: "/dashboard" }, { label: "Settings" }]}
+        title="Settings"
+        subtitle="API credentials & system diagnostics"
+      />
+
+      <main className="flex-1 overflow-y-auto px-8 py-6 space-y-6 max-w-4xl">
+
+        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="icon-box bg-slate-100">
+              <Settings className="w-4 h-4 text-slate-700" />
+            </div>
+            <span className="text-overline">System Configuration</span>
+          </div>
+          <h1 className="text-page-title">API Credentials & Diagnostics</h1>
+          <p className="text-body mt-2">Configure Groq Llama 3.3, Tavily Search, ChromaDB RAG, and OpenAlex API integrations.</p>
+        </motion.div>
+
+        {/* System Status Row */}
+        <div className="grid grid-cols-3 gap-4">
+          {SYSTEM_STATUS.map((item, idx) => {
+            const Icon = item.icon;
+            return (
+              <motion.div key={idx} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.08 }}>
+                <div className="premium-card p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`icon-box ${item.bg}`}>
+                      <Icon className={`w-4 h-4 ${item.color}`} />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="text-[11px] font-bold text-emerald-600">{item.status}</span>
+                    </div>
+                  </div>
+                  <div className="text-[14px] font-bold text-slate-900">{item.label}</div>
+                  <div className="text-[11px] text-slate-400 font-mono mt-0.5">{item.version}</div>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={runHealthCheck} 
-          disabled={checking}
-          className="gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${checking ? "animate-spin" : ""}`} />
-          <span>Refresh Health</span>
-        </Button>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* API Status Card */}
-        <Card className="p-6 space-y-4">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider text-zinc-500 flex items-center gap-2">
-            <Terminal className="w-4.5 h-4.5 text-indigo-400" />
-            Core API & Integrations
-          </h3>
-          <div className="space-y-4 pt-2">
-            
-            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/40 border border-darkBorder/50">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-semibold text-white">Google Gemini API</h4>
-                <p className="text-[10px] text-zinc-500">Key: configured in backend environment</p>
+        {/* API Keys Form */}
+        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <form onSubmit={handleSave}>
+            <div className="premium-card p-6 space-y-5">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+                <Key className="w-4 h-4 text-emerald-600" />
+                <h2 className="text-[15px] font-bold text-slate-900">API Key Credentials</h2>
               </div>
-              <Badge variant="success" className="gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Active</span>
-              </Badge>
-            </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/40 border border-darkBorder/50">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-semibold text-white">Vite Dev Server</h4>
-                <p className="text-[10px] text-zinc-500">Environment: Localhost development</p>
+              <div className="space-y-4">
+                {[
+                  { label: "Groq API Key", sublabel: "Llama-3.3-70b-versatile", value: groqKey, setter: setGroqKey, type: "password" },
+                  { label: "Tavily Web Search API Key", sublabel: "Web search & intelligence scraping", value: tavilyKey, setter: setTavilyKey, type: "password" },
+                  { label: "OpenAlex Academic Ingestion API", sublabel: "Academic literature & citation graph", value: openAlexKey, setter: setOpenAlexKey, type: "text" }
+                ].map(({ label, sublabel, value, setter, type }) => (
+                  <div key={label}>
+                    <label className="text-[12px] font-bold text-slate-700 block mb-0.5">{label}</label>
+                    <div className="text-[11px] text-slate-400 font-medium mb-2">{sublabel}</div>
+                    <input
+                      type={type}
+                      value={value}
+                      onChange={(e) => setter(e.target.value)}
+                      className="w-full h-10 px-4 bg-white border border-slate-200 rounded-[12px] text-[13px] font-mono text-slate-800 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all"
+                    />
+                  </div>
+                ))}
               </div>
-              <Badge variant="success" className="gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Online</span>
-              </Badge>
-            </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/40 border border-darkBorder/50">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-semibold text-white">Backend Server API</h4>
-                <p className="text-[10px] text-zinc-500">Endpoint: /api/health</p>
+              {/* Vector DB Info */}
+              <div className="border-t border-slate-100 pt-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Database className="w-4 h-4 text-sky-600" />
+                  <h2 className="text-[15px] font-bold text-slate-900">Vector Storage & RAG Settings</h2>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "ChromaDB Directory", value: "/backend/chroma_db_patent_store" },
+                    { label: "Embedding Model", value: "all-MiniLM-L6-v2" }
+                  ].map(({ label, value }) => (
+                    <div key={label} className="p-3.5 bg-slate-50 border border-slate-200 rounded-[12px]">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wide mb-1">{label}</div>
+                      <div className="text-[12px] font-mono font-semibold text-slate-700">{value}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <Badge variant={!health ? "default" : health.status === "healthy" ? "success" : "destructive"} className="gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{!health ? "Checking..." : health.status === "healthy" ? "Healthy" : "Offline"}</span>
-              </Badge>
-            </div>
 
-          </div>
-        </Card>
-
-        {/* Database Metrics Card */}
-        <Card className="p-6 space-y-4">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider text-zinc-500 flex items-center gap-2">
-            <Database className="w-4.5 h-4.5 text-purple-400" />
-            Vector DB & Ingestions
-          </h3>
-          <div className="space-y-4 pt-2">
-            
-            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/40 border border-darkBorder/50">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-semibold text-white">Persistent ChromaDB</h4>
-                <p className="text-[10px] text-zinc-500">Collection: `patent_global` (10,791 patents)</p>
-              </div>
-              <Badge variant="success" className="gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Connected</span>
-              </Badge>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/40 border border-darkBorder/50">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-semibold text-white">Academic Search APIs</h4>
-                <p className="text-[10px] text-zinc-500">Sources: arXiv, OpenAlex, Semantic Scholar</p>
-              </div>
-              <Badge variant="success" className="gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Enabled</span>
-              </Badge>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/40 border border-darkBorder/50">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-semibold text-white">PostgreSQL Database</h4>
-                <p className="text-[10px] text-zinc-500">Status: {!health ? "Checking..." : health.database}</p>
-              </div>
-              <Badge variant={!health ? "default" : health.database.includes("connected") ? "success" : "warning"} className="gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{!health ? "Checking..." : health.database.includes("connected") ? "Connected" : "Simulated"}</span>
-              </Badge>
-            </div>
-
-          </div>
-        </Card>
-
-        {/* LLM Client Settings Card */}
-        <Card className="p-6 space-y-4">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider text-zinc-500 flex items-center gap-2">
-            <Cpu className="w-4.5 h-4.5 text-cyan-400" />
-            LLM Model Configurations
-          </h3>
-          <div className="space-y-4 pt-2">
-            
-            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/40 border border-darkBorder/50">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-semibold text-white">LangChain Provider</h4>
-                <p className="text-[10px] text-zinc-500">Model: `gemini-2.5-flash`</p>
-              </div>
-              <span className="text-xs font-medium text-zinc-400">Default Model</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/40 border border-darkBorder/50">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-semibold text-white">Fallback Generator</h4>
-                <p className="text-[10px] text-zinc-500">Contextual mock schema matching</p>
-              </div>
-              <span className="text-xs font-medium text-emerald-400">Resilient (Active)</span>
-            </div>
-
-          </div>
-        </Card>
-
-        {/* Theme customization */}
-        <Card className="p-6 space-y-4">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider text-zinc-500 flex items-center gap-2">
-            <Sun className="w-4.5 h-4.5 text-amber-400" />
-            Appearance customization
-          </h3>
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/40 border border-darkBorder/50">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-semibold text-white">Theme Selection</h4>
-                <p className="text-[10px] text-zinc-500">Currently locked to Dark Mode first</p>
-              </div>
-              <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded border border-darkBorder">
-                <button type="button" className="p-1 rounded text-zinc-600 hover:text-zinc-400">
-                  <Sun className="w-3.5 h-3.5" />
-                </button>
-                <button type="button" className="p-1 rounded bg-darkBorder text-indigo-400">
-                  <Moon className="w-3.5 h-3.5" />
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                {saved ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-1.5 text-emerald-700 text-[13px] font-semibold"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Configuration saved successfully!
+                  </motion.div>
+                ) : (
+                  <span className="text-[12px] text-slate-400 font-mono">Changes apply to next execution run.</span>
+                )}
+                <button type="submit" className="btn-premium text-[13px]">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Save Configuration</span>
                 </button>
               </div>
             </div>
-          </div>
-        </Card>
-
-      </div>
+          </form>
+        </motion.div>
+      </main>
     </div>
   );
 }

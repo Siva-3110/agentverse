@@ -1,436 +1,201 @@
-import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { 
-  Sparkles, 
-  Database, 
-  GitBranch, 
-  Lightbulb, 
-  ShieldAlert, 
-  BookOpen, 
-  TrendingUp,
-  ArrowRight,
-  ChevronRight
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Sparkles, ArrowRight, BookOpen, ShieldCheck, Target, Lightbulb,
+  Scale, TrendingUp, DollarSign, ChevronRight
 } from "lucide-react";
-import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
-import { Badge } from "../components/ui/Badge";
 
-/* ─── Particle Canvas Background ─── */
-function ParticleMeshBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const AGENTS = [
+  { num: "01", label: "Research Intelligence", desc: "OpenAlex, arXiv & Semantic Scholar academic literature ingestion", icon: BookOpen, color: "from-blue-500 to-blue-600" },
+  { num: "02", label: "Patent Landscape", desc: "Google Patents deep-search & ChromaDB vector clustering", icon: ShieldCheck, color: "from-violet-500 to-violet-600" },
+  { num: "03", label: "Gap Analysis", desc: "Unpatented white-space detection & opportunity scoring", icon: Target, color: "from-amber-500 to-orange-500" },
+  { num: "04", label: "Innovation Architect", desc: "Patent-ready concept synthesis & architecture specs", icon: Lightbulb, color: "from-pink-500 to-rose-500" },
+  { num: "05", label: "Patentability Score", desc: "35 U.S.C. § 102/103 legal novelty & claims scoring", icon: Scale, color: "from-red-500 to-red-600" },
+  { num: "06", label: "Market Intelligence", desc: "Google Trends, GitHub growth & Enterprise RSS signals", icon: TrendingUp, color: "from-emerald-500 to-emerald-600" },
+  { num: "07", label: "Funding Pathfinder", desc: "BIRAC, YC, Startup India & Grant auto-matching", icon: DollarSign, color: "from-orange-400 to-amber-500" }
+];
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animationFrameId: number;
-    let width = (canvas.width = canvas.offsetWidth);
-    let height = (canvas.height = canvas.offsetHeight);
-
-    const particles: Array<{ x: number; y: number; vx: number; vy: number; r: number }> = [];
-    const numParticles = 55;
-
-    for (let i = 0; i < numParticles; i++) {
-      particles.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.22,
-        vy: (Math.random() - 0.5) * 0.22,
-        r: Math.random() * 1.8 + 0.8
-      });
-    }
-
-    const handleResize = () => {
-      if (!canvas) return;
-      width = canvas.width = canvas.offsetWidth;
-      height = canvas.height = canvas.offsetHeight;
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    const draw = () => {
-      ctx.clearRect(0, 0, width, height);
-
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i < particles.length; i++) {
-        const p1 = particles[i];
-        for (let j = i + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-          if (dist < 130) {
-            const alpha = (1 - dist / 130) * 0.09;
-            ctx.strokeStyle = `rgba(99, 102, 241, ${alpha})`;
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        }
-      }
-
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        ctx.fillStyle = "rgba(139, 92, 246, 0.28)";
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (p.x < 0 || p.x > width) p.vx *= -1;
-        if (p.y < 0 || p.y > height) p.vy *= -1;
-      }
-
-      animationFrameId = requestAnimationFrame(draw);
-    };
-
-    draw();
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-40 z-0" />;
-}
-
-/* ─── Animated connector arrow between steps ─── */
-function StepConnector() {
-  return (
-    <div className="hidden lg:flex items-center justify-center flex-shrink-0 px-1 z-10">
-      <div className="relative flex items-center">
-        <div className="w-8 h-px bg-gradient-to-r from-indigo-500/40 to-purple-500/40" />
-        <ChevronRight className="w-4 h-4 text-indigo-400/60 -ml-1" />
-      </div>
-    </div>
-  );
-}
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.08 } }
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+};
 
 export default function LandingPage() {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    localStorage.removeItem("latest_results");
-    localStorage.removeItem("active_domain");
-    localStorage.removeItem("active_session_id");
-  }, []);
-
-  const handleStartAnalysis = () => {
-    navigate("/dashboard");
-  };
-
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  const pipelineSteps = [
-    {
-      icon: BookOpen,
-      color: "text-cyan-400",
-      glow: "from-cyan-500/20 to-transparent",
-      border: "border-cyan-500/15",
-      title: "Research Intelligence",
-      desc: "Analyze global research activity and identify emerging scientific trends."
-    },
-    {
-      icon: Database,
-      color: "text-purple-400",
-      glow: "from-purple-500/20 to-transparent",
-      border: "border-purple-500/15",
-      title: "Patent Landscape Analysis",
-      desc: "Map active filings, commercial ownership, and technology saturation."
-    },
-    {
-      icon: GitBranch,
-      color: "text-pink-400",
-      glow: "from-pink-500/20 to-transparent",
-      border: "border-pink-500/15",
-      title: "Technology Gap Detection",
-      desc: "Discover high-momentum research fields with no active patent coverage."
-    },
-    {
-      icon: Lightbulb,
-      color: "text-emerald-400",
-      glow: "from-emerald-500/20 to-transparent",
-      border: "border-emerald-500/15",
-      title: "Innovation Generation",
-      desc: "Synthesize novel product concepts and ready-to-file patent specifications."
-    },
-    {
-      icon: ShieldAlert,
-      color: "text-amber-400",
-      glow: "from-amber-500/20 to-transparent",
-      border: "border-amber-500/15",
-      title: "Patentability Assessment",
-      desc: "Score novelty, check prior art, and validate filing feasibility."
-    }
-  ];
-
-  const capabilities = [
-    {
-      icon: BookOpen,
-      color: "text-cyan-400",
-      bg: "bg-cyan-500/10",
-      border: "border-cyan-500/20",
-      hoverBorder: "hover:border-cyan-400/40",
-      glow: "group-hover:shadow-[0_0_30px_rgba(6,182,212,0.08)]",
-      title: "Research Intelligence",
-      desc: "Analyze global research activity from academic databases and identify emerging scientific trends."
-    },
-    {
-      icon: Database,
-      color: "text-purple-400",
-      bg: "bg-purple-500/10",
-      border: "border-purple-500/20",
-      hoverBorder: "hover:border-purple-400/40",
-      glow: "group-hover:shadow-[0_0_30px_rgba(168,85,247,0.08)]",
-      title: "Patent Landscape Mapping",
-      desc: "Understand patent saturation, commercial activity, and ownership concentration."
-    },
-    {
-      icon: TrendingUp,
-      color: "text-emerald-400",
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/20",
-      hoverBorder: "hover:border-emerald-400/40",
-      glow: "group-hover:shadow-[0_0_30px_rgba(16,185,129,0.08)]",
-      title: "Innovation Opportunity Discovery",
-      desc: "Identify unexplored technology opportunities and generate patent-ready concepts."
-    }
-  ];
-
   return (
-    <div className="min-h-screen bg-[#05070c] text-zinc-300 relative flex flex-col overflow-x-hidden selection:bg-indigo-500/30 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-['Plus_Jakarta_Sans',sans-serif] relative overflow-x-hidden flex flex-col justify-between selection:bg-emerald-500/20 selection:text-emerald-700">
       
-      {/* Ambient Background Gradients */}
-      <div className="fixed top-0 left-1/4 w-[900px] h-[900px] bg-indigo-600/4 rounded-full blur-[250px] pointer-events-none z-0" />
-      <div className="fixed top-[40%] right-1/5 w-[700px] h-[700px] bg-purple-600/4 rounded-full blur-[220px] pointer-events-none z-0" />
-      <div className="fixed bottom-[15%] left-1/3 w-[600px] h-[600px] bg-cyan-600/3 rounded-full blur-[200px] pointer-events-none z-0" />
+      {/* Light Box-Grid Pattern & Micro Radial Glow */}
+      <div className="fixed inset-0 landing-grid-bg pointer-events-none z-0" />
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-40">
+        <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-emerald-200/40 via-teal-100/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-[40%] right-[-10%] w-[600px] h-[600px] bg-purple-100/30 rounded-full blur-3xl" />
+      </div>
 
-      {/* ──────────────────────────────── NAVBAR ──────────────────────────────── */}
-      <header className="fixed top-0 w-full h-16 z-50 border-b border-white/[0.04] bg-[#05070c]/60 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto w-full h-full flex items-center justify-between px-6 lg:px-8">
-          
-          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate("/")}>
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-extrabold text-base text-white tracking-tight">
-              PatentScout <span className="text-indigo-400">AI</span>
-            </span>
+      {/* Navigation Header */}
+      <nav className="relative z-20 flex items-center justify-between px-8 py-5 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl sticky top-0 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#059669] to-[#065F46] flex items-center justify-center shadow-md shadow-emerald-900/15">
+            <Sparkles className="w-5 h-5 text-white" />
           </div>
-          
-          <nav className="hidden md:flex items-center gap-8 text-[11px] font-semibold text-zinc-400">
-            <button onClick={() => scrollToSection("features")} className="hover:text-white transition-colors duration-200 cursor-pointer">
-              Features
-            </button>
-            <button onClick={() => scrollToSection("pipeline")} className="hover:text-white transition-colors duration-200 cursor-pointer">
-              How It Works
-            </button>
-          </nav>
-
-          <Button 
-            className="h-8 font-bold text-[11px] px-4 bg-white text-black hover:bg-zinc-100 shadow-md shadow-white/5 border border-white/10 rounded-lg"
-            onClick={handleStartAnalysis}
-          >
-            Start Analysis
-          </Button>
+          <div>
+            <div className="text-[17px] font-extrabold text-slate-900 tracking-tight leading-none">PatentScout AI</div>
+            <div className="text-[11px] font-bold text-emerald-700 mt-1 uppercase tracking-wider">Multi-Agent AI Platform</div>
+          </div>
         </div>
-      </header>
 
-      {/* ──────────────────────────────── SECTION 1: HERO ──────────────────────────────── */}
-      <section className="relative min-h-screen flex flex-col justify-center items-center px-6 pt-16 pb-8 overflow-hidden">
-        <ParticleMeshBackground />
+        {/* 2 Navigation Buttons: Sign In & Sign Up */}
+        <div className="flex items-center gap-3">
+          <Link to="/auth">
+            <button className="px-5 py-2 text-[14px] font-bold text-slate-700 hover:text-slate-900 transition-colors">
+              Sign In
+            </button>
+          </Link>
+          <Link to="/auth">
+            <motion.button
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              className="btn-launch-nav"
+            >
+              <span>Sign Up</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </motion.button>
+          </Link>
+        </div>
+      </nav>
 
-        {/* Centered glow orb */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/6 rounded-full blur-[160px] pointer-events-none z-0" />
-
-        <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10">
-          
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-500/25 bg-indigo-500/8 backdrop-blur-sm text-[10px] font-bold text-indigo-300 uppercase tracking-widest">
-            <Sparkles className="w-3 h-3 animate-pulse" />
-            <span>Autonomous Multi-Agent Intelligence System</span>
-          </div>
-
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[80px] font-extrabold tracking-tight text-white leading-[1.05] max-w-4xl mx-auto">
-            Discover The Next{" "}
-            <span className="bg-gradient-to-r from-indigo-300 via-purple-300 to-cyan-300 bg-clip-text text-transparent">
-              Patent Opportunity
-            </span>{" "}
-            Before Anyone Else
+      {/* Centered Hero Section */}
+      <section className="relative z-10 min-h-[calc(100vh-90px)] flex flex-col items-center justify-center px-6 py-20 text-center max-w-5xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="flex flex-col items-center"
+        >
+          {/* Main Centered Headline */}
+          <h1 className="text-[42px] sm:text-[56px] lg:text-[64px] font-[800] text-slate-900 tracking-[-0.035em] leading-[1.12] mb-8 max-w-4xl">
+            Transform Research Literature <br className="hidden sm:block" />
+            into Patent-Ready Commercial <br className="hidden sm:block" />
+            <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 bg-clip-text text-transparent">
+              Startups in Minutes.
+            </span>
           </h1>
 
-          <p className="text-zinc-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed font-medium">
-            PatentScout AI analyzes research activity, patent landscapes, technology gaps, innovation opportunities, and patentability potential through an autonomous multi-agent intelligence system.
+          {/* Description (Strictly 2 lines) */}
+          <p className="text-[17px] sm:text-[19px] text-slate-600 font-[500] leading-[1.6] max-w-3xl mb-10 text-center">
+            PatentScout AI is an autonomous multi-agent intelligence platform that transforms academic research into patent-ready innovations, validates novelty, analyzes market opportunities, discovers funding opportunities, and generates executive intelligence reports.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button 
-              onClick={handleStartAnalysis}
-              className="h-12 font-bold text-sm px-8 bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 transition-opacity shadow-xl shadow-indigo-500/20 border border-indigo-400/20 rounded-xl group"
-            >
-              Start Analysis
-              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => scrollToSection("pipeline")}
-              className="h-12 font-bold text-sm px-8 border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white rounded-xl backdrop-blur-sm"
-            >
-              How It Works
-            </Button>
-          </div>
-
-          {/* Subtle stats row */}
-          <div className="flex flex-wrap items-center justify-center gap-8 pt-6 border-t border-white/5">
-            {[
-              { label: "Research Papers Analyzed", value: "100,000+" },
-              { label: "Patent Records", value: "1.5M+" },
-              { label: "AI Agents", value: "5" }
-            ].map(stat => (
-              <div key={stat.label} className="text-center">
-                <div className="text-xl font-extrabold text-white tracking-tight">{stat.value}</div>
-                <div className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ──────────────────────────────── SECTION 2: HOW IT WORKS ──────────────────────────────── */}
-      <section id="pipeline" className="py-24 px-6 lg:px-8 border-t border-white/[0.04] relative z-10">
-        <div className="max-w-7xl mx-auto">
-          
-          <div className="text-center space-y-3 mb-16">
-            <Badge variant="outline" className="border-indigo-500/25 text-indigo-400 uppercase tracking-widest font-bold text-[9px] py-0.5 px-3">
-              Pipeline
-            </Badge>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-              How It Works
-            </h2>
-            <p className="text-zinc-500 text-sm max-w-lg mx-auto">
-              Five autonomous agents working in sequence to deliver complete innovation intelligence.
-            </p>
-          </div>
-
-          {/* Horizontal flow */}
-          <div className="flex flex-col lg:flex-row items-stretch gap-0">
-            {pipelineSteps.map((step, idx) => {
-              const IconComp = step.icon;
-              return (
-                <div key={step.title} className="flex flex-col lg:flex-row items-stretch flex-1 min-w-0">
-                  {/* Card */}
-                  <div className={`flex-1 p-6 rounded-2xl bg-[#0a0d14]/60 border ${step.border} backdrop-blur-sm hover:bg-[#0d1020]/80 transition-all duration-300 group relative overflow-hidden`}>
-                    <div className={`absolute inset-0 bg-gradient-to-br ${step.glow} opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl`} />
-                    <div className="relative z-10 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className={`w-10 h-10 rounded-xl bg-[#07090f] border ${step.border} flex items-center justify-center ${step.color} transition-transform group-hover:scale-110 duration-300`}>
-                          <IconComp className="w-5 h-5" />
-                        </div>
-                        <span className="text-[10px] font-bold text-zinc-600 font-mono">
-                          {String(idx + 1).padStart(2, "0")}
-                        </span>
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-white text-sm leading-snug mb-2">{step.title}</h3>
-                        <p className="text-zinc-500 text-[11px] leading-relaxed">{step.desc}</p>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Connector (not after last item) */}
-                  {idx < pipelineSteps.length - 1 && <StepConnector />}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ──────────────────────────────── SECTION 3: CORE CAPABILITIES ──────────────────────────────── */}
-      <section id="features" className="py-24 px-6 lg:px-8 border-t border-white/[0.04] relative z-10">
-        <div className="max-w-7xl mx-auto">
-          
-          <div className="text-center space-y-3 mb-16">
-            <Badge variant="outline" className="border-purple-500/25 text-purple-400 uppercase tracking-widest font-bold text-[9px] py-0.5 px-3">
-              Capabilities
-            </Badge>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-              Core Capabilities
-            </h2>
-            <p className="text-zinc-500 text-sm max-w-lg mx-auto">
-              Everything you need to discover, analyze, and act on patent opportunities.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {capabilities.map(cap => {
-              const IconComp = cap.icon;
-              return (
-                <Card
-                  key={cap.title}
-                  className={`relative overflow-hidden p-8 bg-[#0a0d14]/60 border ${cap.border} ${cap.hoverBorder} ${cap.glow} backdrop-blur-sm hover:-translate-y-1 transition-all duration-300 group rounded-2xl`}
-                >
-                  {/* Large background icon watermark */}
-                  <div className="absolute bottom-4 right-4 opacity-[0.04] group-hover:opacity-[0.07] transition-opacity duration-500">
-                    <IconComp className="w-28 h-28" />
-                  </div>
-                  
-                  <div className="relative z-10 space-y-5">
-                    <div className={`w-14 h-14 rounded-2xl ${cap.bg} border ${cap.border} flex items-center justify-center ${cap.color} transition-transform group-hover:scale-110 duration-300`}>
-                      <IconComp className="w-7 h-7" />
-                    </div>
-                    <div className="space-y-2.5">
-                      <h3 className="font-extrabold text-white text-lg leading-snug tracking-tight">{cap.title}</h3>
-                      <p className="text-zinc-400 text-sm leading-relaxed">{cap.desc}</p>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ──────────────────────────────── SECTION 4: FINAL CTA ──────────────────────────────── */}
-      <section className="py-32 px-6 lg:px-8 relative overflow-hidden z-10 border-t border-white/[0.04]">
-        {/* Glow orb */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/5 rounded-full blur-[160px] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-purple-600/4 rounded-full blur-[100px] pointer-events-none" />
-        
-        <div className="max-w-2xl mx-auto text-center space-y-8 relative z-10">
-          <div className="space-y-4">
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
-              Ready To Discover Your Next{" "}
-              <span className="bg-gradient-to-r from-indigo-300 via-purple-300 to-cyan-300 bg-clip-text text-transparent">
-                Innovation Breakthrough?
-              </span>
-            </h2>
-            <p className="text-zinc-400 text-base leading-relaxed max-w-lg mx-auto">
-              Launch PatentScout AI and begin exploring technology opportunities powered by autonomous agents.
-            </p>
-          </div>
-
-          <Button 
-            onClick={handleStartAnalysis}
-            className="h-13 font-bold text-sm px-10 bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 transition-opacity shadow-2xl shadow-indigo-500/25 border border-indigo-400/20 rounded-xl group"
+          {/* Primary CTA Button: Rich Emerald Fill + White Text */}
+          <motion.div
+            whileHover={{ scale: 1.03, y: -2 }}
+            whileTap={{ scale: 0.98 }}
           >
-            Start Analysis
-            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
-          </Button>
+            <button
+              onClick={() => navigate("/auth")}
+              className="btn-launch-hero"
+            >
+              <Sparkles className="w-5 h-5 text-white" />
+              <span>Launch Platform Workspace</span>
+              <ArrowRight className="w-5 h-5 text-white" />
+            </button>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* Existing Agent Showcase Section */}
+      <section className="relative z-10 px-6 py-24 border-t border-slate-200/80 bg-white/70 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14 space-y-3">
+            <span className="badge-pill-emerald text-[12px] uppercase tracking-wider">
+              Autonomous Swarm Architecture
+            </span>
+            <h2 className="text-[32px] sm:text-[38px] font-[800] text-slate-900 tracking-tight">
+              The 7-Agent Intelligence Swarm
+            </h2>
+            <p className="text-[16px] text-slate-600 font-medium max-w-xl mx-auto">
+              Each specialized AI agent executes targeted research, legal, market, and financial workflows in full autonomy.
+            </p>
+          </div>
+
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          >
+            {AGENTS.map((agent) => {
+              const Icon = agent.icon;
+              return (
+                <motion.div key={agent.num} variants={itemVariants}>
+                  <div className="bg-white border border-slate-200/90 rounded-[24px] p-6 h-full flex flex-col justify-between shadow-sm hover:shadow-xl hover:shadow-emerald-500/10 hover:border-emerald-500/60 transition-all duration-300 group">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`w-11 h-11 rounded-[14px] bg-gradient-to-br ${agent.color} flex items-center justify-center text-white shadow-md`}>
+                          <Icon className="w-5.5 h-5.5" />
+                        </div>
+                        <span className="text-[12px] font-extrabold text-slate-400 tracking-widest">{agent.num}</span>
+                      </div>
+                      <h3 className="text-[17px] font-bold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors">{agent.label}</h3>
+                      <p className="text-[14px] text-slate-600 leading-relaxed font-medium">{agent.desc}</p>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[12px] font-bold text-emerald-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span>Explore Agent Pipeline</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+
+            {/* Final Showcase CTA Card: HIGH CONTRAST RICH FOREST EMERALD CARD */}
+            <motion.div variants={itemVariants}>
+              <div
+                onClick={() => navigate("/auth")}
+                className="bg-gradient-to-br from-[#065F46] via-[#047857] to-[#0F172A] p-6 rounded-[24px] h-full flex flex-col justify-between cursor-pointer group shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 border border-emerald-500/30 relative overflow-hidden"
+              >
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="px-3 py-1 rounded-full bg-white/20 border border-white/30 text-white text-[11px] font-extrabold uppercase tracking-wider shadow-sm">
+                      All 7 Active
+                    </span>
+                  </div>
+                  <h3 className="text-[20px] font-extrabold text-white mb-2 leading-tight">Launch Innovation Workspace</h3>
+                  <p className="text-[14px] text-emerald-100 font-medium leading-relaxed">
+                    Authenticate to enter the platform and activate all 7 agents on your target research domain.
+                  </p>
+                </div>
+                <div className="mt-6 flex items-center gap-2 text-white font-extrabold text-[14px] relative z-10 group-hover:translate-x-1 transition-transform">
+                  <span>Get Started</span>
+                  <ArrowRight className="w-4 h-4 text-emerald-300" />
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="h-14 border-t border-white/[0.04] flex items-center justify-center text-[10px] text-zinc-600 bg-[#05070c] z-10 font-medium relative">
-        &copy; {new Date().getFullYear()} PatentScout AI. All Rights Reserved.
+      {/* Minimal Footer */}
+      <footer className="relative z-10 border-t border-slate-200 bg-white px-8 py-6">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-[#059669] to-[#065F46] flex items-center justify-center shadow-sm">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-[14px] font-extrabold text-slate-900">PatentScout AI</span>
+          </div>
+          <p className="text-[13px] text-slate-500 font-medium">
+            Autonomous Multi-Agent Commercialization Engine
+          </p>
+        </div>
       </footer>
+
     </div>
   );
 }

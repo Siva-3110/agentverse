@@ -1,84 +1,133 @@
 import { Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  FlaskConical, 
-  Scroll, 
-  AlertCircle, 
-  Lightbulb, 
-  ShieldCheck, 
-  History,
-  Settings,
-  Atom
+import { motion } from "framer-motion";
+import {
+  LayoutDashboard, BookOpen, ShieldCheck, Target, Lightbulb,
+  Scale, TrendingUp, DollarSign, FileText, Clock, Settings,
+  Cpu, Sparkles, User, Eye, LogOut, ShieldAlert
 } from "lucide-react";
-import { cn } from "../lib/utils";
+import { useAuth } from "../context/AuthContext";
 
-interface SidebarProps {
-  className?: string;
-}
-
-export default function Sidebar({ className }: SidebarProps) {
+export default function Sidebar() {
   const location = useLocation();
-  const currentPath = location.pathname;
+  const { user, logout } = useAuth();
 
-  const menuItems = [
-    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { name: "Research", path: "/research", icon: FlaskConical },
-    { name: "Patents", path: "/patents", icon: Scroll },
-    { name: "Gaps", path: "/gaps", icon: AlertCircle },
-    { name: "Innovation", path: "/innovation", icon: Lightbulb },
-    { name: "Patentability", path: "/patentability", icon: ShieldCheck },
-    { name: "History", path: "/history", icon: History },
-    { name: "Settings", path: "/settings", icon: Settings },
+  const isUserAdmin = user?.role === "Admin";
+
+  const NAV_SECTIONS = [
+    {
+      category: "MENU",
+      items: [
+        { path: "/mission-control", label: "Mission Control", icon: Cpu },
+        { path: "/dashboard", label: "Summary Dashboard", icon: LayoutDashboard }
+      ]
+    },
+    {
+      category: "AGENT SWARM",
+      items: [
+        { path: "/research", label: "01 Research Intelligence", icon: BookOpen },
+        { path: "/patents", label: "02 Patent Landscape", icon: ShieldCheck },
+        { path: "/gaps", label: "03 Gap Analysis", icon: Target },
+        { path: "/innovation", label: "04 Innovation Architect", icon: Lightbulb },
+        { path: "/patentability", label: "05 Patentability Score", icon: Scale },
+        { path: "/market", label: "06 Market Intelligence", icon: TrendingUp },
+        { path: "/funding", label: "07 Funding Pathfinder", icon: DollarSign },
+        { path: "/report", label: "08 Executive Report", icon: FileText },
+        { path: "/auto-watch", label: "09 Auto Patent Watch", icon: Eye }
+      ]
+    },
+    {
+      category: "GENERAL",
+      items: [
+        { path: "/profile", label: "Profile", icon: User },
+        { path: "/history", label: "Mission History", icon: Clock },
+        { path: "/settings", label: "Settings", icon: Settings }
+      ]
+    }
   ];
 
   return (
-    <aside className={cn("w-56 border-r border-white/5 bg-[#030408] flex flex-col h-full z-20", className)}>
-      {/* Brand Logo */}
-      <div className="h-16 flex items-center px-5 border-b border-white/5 gap-2.5">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <Atom className="w-4 h-4 text-white animate-pulse-slow" />
-        </div>
-        <span className="font-semibold text-[14px] bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent tracking-tight font-sans">
-          PatentScout AI
-        </span>
+    <aside className="w-[264px] bg-[#CBE7D9] border-r border-emerald-300/70 flex flex-col h-full overflow-hidden select-none">
+
+      {/* ── LOGO ── */}
+      <div className="px-5 pt-5 pb-4 border-b border-emerald-300/60 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-3 group">
+          <div className="w-9 h-9 rounded-[12px] bg-gradient-to-br from-[#0B4F37] to-[#065F46] flex items-center justify-center shadow-md shadow-emerald-900/20 flex-shrink-0">
+            <Sparkles className="w-4 h-4 text-white" />
+          </div>
+          <div className="min-w-0">
+            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 700, color: '#0A0F1A', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+              PatentScout AI
+            </div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 600, color: '#046A4E', lineHeight: 1.3, marginTop: 1 }}>
+              Autonomous Swarm
+            </div>
+          </div>
+        </Link>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="flex-1 px-3 py-5 space-y-1.5 overflow-y-auto">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPath === item.path;
-          
-          return (
-            <Link
-              key={item.name}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all duration-200 border",
-                isActive
-                  ? "bg-indigo-500/10 border-indigo-500/35 text-white shadow-[0_0_15px_rgba(99,102,241,0.1)]"
-                  : "border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/5 hover:border-white/5"
-              )}
+      {/* ── NAVIGATION ── */}
+      <nav className="flex-1 px-3.5 py-4 space-y-5 overflow-y-auto">
+        {NAV_SECTIONS.map((section, sIdx) => (
+          <div key={sIdx}>
+            <div
+              style={{ fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, color: '#046A4E', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+              className="px-2.5 mb-2"
             >
-              <Icon className={cn("w-4.5 h-4.5 transition-transform duration-200", isActive ? "text-indigo-400 scale-105" : "text-zinc-500")} />
-              <span>{item.name}</span>
-            </Link>
-          );
-        })}
+              {section.category}
+            </div>
+            <div className="space-y-1">
+              {section.items.map((item, iIdx) => {
+                const isActive =
+                  location.pathname === item.path ||
+                  (item.path !== "/" && item.path !== "/settings" && location.pathname.startsWith(item.path)) ||
+                  (item.path === "/mission-control" && (location.pathname === "/mission" || location.pathname === "/mission-execution"));
+
+                const Icon = item.icon;
+                return (
+                  <Link key={`${sIdx}-${iIdx}`} to={item.path}>
+                    <motion.div
+                      whileHover={{ x: isActive ? 0 : 2 }}
+                      transition={{ duration: 0.15 }}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-[14px] text-[13px] font-semibold transition-all duration-250 cursor-pointer ${
+                        isActive
+                          ? "bg-[#065F46] text-white shadow-md shadow-emerald-900/15 font-bold"
+                          : "text-slate-900 hover:bg-[#B2DEC8] hover:text-[#033B2B]"
+                      }`}
+                      style={{ fontFamily: "'Inter', sans-serif" }}
+                    >
+                      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-white" : "text-[#05845C]"}`} />
+                      <span className="truncate">{item.label}</span>
+                    </motion.div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* Profile summary */}
-      <div className="p-4 border-t border-white/5 bg-[#020204]">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center font-semibold text-xs text-white shadow-md">
-            PS
+      {/* ── USER FOOTER CARD ── */}
+      <div className="p-3 border-t border-emerald-300/60 bg-[#BFDFCE]">
+        <div className="flex items-center justify-between p-2 rounded-[14px] bg-white/70 border border-emerald-300/40">
+          <div className="min-w-0 pr-2">
+            <div className="text-[12px] font-extrabold text-slate-900 truncate">
+              {user ? `${user.first_name} ${user.last_name}` : "Sivaganesh B"}
+            </div>
+            <div className="text-[10px] font-bold text-emerald-800 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+              {user?.role || "Admin"}
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-zinc-200 truncate">Analyst Mode</p>
-            <p className="text-[9px] text-zinc-500 truncate">demo@patentscout.ai</p>
-          </div>
+          <button
+            onClick={logout}
+            title="Sign Out"
+            className="p-1.5 rounded-[10px] bg-emerald-100 hover:bg-emerald-200 text-emerald-900 cursor-pointer transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
+
     </aside>
   );
 }

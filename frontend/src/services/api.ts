@@ -32,6 +32,57 @@ export interface InnovationIdea {
   potential_benefits?: string[];
 }
 
+export interface PatentabilityScore {
+  innovation_name: string;
+  overall_score: number;
+  novelty_score: number;
+  competition_score: number;
+  feasibility_score: number;
+  market_potential_score: number;
+  reasoning: string;
+  similar_patents: string[];
+}
+
+export interface MarketAnalysisResult {
+  innovation_name: string;
+  trend_score: number;
+  growth_trend: string;
+  research_growth: string;
+  patent_growth: string;
+  enterprise_adoption: string[];
+  startup_count: number;
+  key_insights: string[];
+  market_opportunity_score: number;
+  summary: string;
+}
+
+export interface FundingOpportunity {
+  name: string;
+  organization: string;
+  category: string;
+  funding_amount: string;
+  country: string;
+  eligibility: string;
+  technology_focus: string;
+  startup_stage: string;
+  benefits: string[];
+  deadline: string;
+  official_website: string;
+
+  match_score: number;
+  reason_for_recommendation: string;
+}
+
+export interface FundingAnalysisResult {
+  innovation_name: string;
+  domain: string;
+  country: string;
+  startup_stage: string;
+  top_opportunities: FundingOpportunity[];
+  funding_strategy: Array<{ phase: string; program_name: string; action: string }>;
+  summary: string;
+}
+
 export interface PatentabilityResult {
   idea_name: string;
   patentability_score: number;
@@ -52,9 +103,13 @@ export interface AnalysisState {
   patent_clusters: PatentCluster[];
   gap_matrix: GapEntry[];
   innovation_ideas: InnovationIdea[];
+  patentability_scores?: PatentabilityScore[];
+  market_analysis?: MarketAnalysisResult[];
+  funding_analysis?: FundingAnalysisResult;
   patentability?: PatentabilityResult[];
   error?: string | null;
 }
+
 
 // In-memory simulator cache for local run
 const executionSessions: Record<string, { startTime: number; state: AnalysisState }> = {};
@@ -173,186 +228,266 @@ const getFallbackDataForDomain = (domain: string): {
   if (norm.includes("city") || norm.includes("cities") || norm.includes("urban")) {
     return MOCK_DATASETS["smart cities"];
   }
-  
+
   // Dynamic Procedural Fallback Generation
   const hash = simpleHash(domain);
   const titleCaseDomain = domain.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-  
+
   const papers_analyzed = 55 + (hash % 60);
   const patents_analyzed = 450 + (hash % 1150);
-  
+
   const topics: ResearchTopic[] = [
-    { 
-      topic: `Decentralized ${titleCaseDomain} Architectures`, 
-      description: `Investigating consensus-driven network architectures tailored for secure and resilient ${domain} implementations.`, 
-      research_activity: "High", 
-      citation_strength: 85 + (hash % 13) 
+    {
+      topic: `Decentralized ${titleCaseDomain} Architectures`,
+      description: `Investigating consensus-driven network architectures tailored for secure and resilient ${domain} implementations.`,
+      research_activity: "High",
+      citation_strength: 85 + (hash % 13)
     },
-    { 
-      topic: `AI-Powered ${titleCaseDomain} Optimization`, 
-      description: `Applying deep reinforcement learning models to optimize efficiency and minimize latency in ${domain} pipelines.`, 
-      research_activity: "High", 
-      citation_strength: 80 + (hash % 16) 
+    {
+      topic: `AI-Powered ${titleCaseDomain} Optimization`,
+      description: `Applying deep reinforcement learning models to optimize efficiency and minimize latency in ${domain} pipelines.`,
+      research_activity: "High",
+      citation_strength: 80 + (hash % 16)
     },
-    { 
-      topic: `Zero-Trust ${titleCaseDomain} Access Protocols`, 
-      description: `Continuous identity validation frameworks mapping user and system behavior parameters to prevent lateral threats in ${domain}.`, 
-      research_activity: "Medium", 
-      citation_strength: 70 + (hash % 15) 
+    {
+      topic: `Zero-Trust ${titleCaseDomain} Access Protocols`,
+      description: `Continuous identity validation frameworks mapping user and system behavior parameters to prevent lateral threats in ${domain}.`,
+      research_activity: "Medium",
+      citation_strength: 70 + (hash % 15)
     },
-    { 
-      topic: `Edge-Based ${titleCaseDomain} Telemetry`, 
-      description: `Low-power micro-controllers streaming sensor state indices to decentralized nodes for real-time validation.`, 
-      research_activity: "Medium", 
-      citation_strength: 65 + (hash % 18) 
+    {
+      topic: `Edge-Based ${titleCaseDomain} Telemetry`,
+      description: `Low-power micro-controllers streaming sensor state indices to decentralized nodes for real-time validation.`,
+      research_activity: "Medium",
+      citation_strength: 65 + (hash % 18)
     },
-    { 
-      topic: `Post-Quantum Cryptography for ${titleCaseDomain}`, 
-      description: `Integrating lattice-based signature structures into active local databases safeguarding transactional data.`, 
-      research_activity: "Low", 
-      citation_strength: 50 + (hash % 20) 
+    {
+      topic: `Post-Quantum Cryptography for ${titleCaseDomain}`,
+      description: `Integrating lattice-based signature structures into active local databases safeguarding transactional data.`,
+      research_activity: "Low",
+      citation_strength: 50 + (hash % 20)
     }
   ];
 
   const clusters: PatentCluster[] = [
-    { 
-      category: `${titleCaseDomain} Control Systems`, 
-      description: `Patents covering central and edge controllers, inverter switches, and power configurations for ${domain}.`, 
-      saturation: "High", 
-      major_assignees: ["Siemens", "General Electric", "Cisco Systems"] 
+    {
+      category: `${titleCaseDomain} Control Systems`,
+      description: `Patents covering central and edge controllers, inverter switches, and power configurations for ${domain}.`,
+      saturation: "High",
+      major_assignees: ["Siemens", "General Electric", "Cisco Systems"]
     },
-    { 
-      category: `Distributed ${titleCaseDomain} Routing`, 
-      description: `Patents protecting modular configurations, telemetry routers, and wireless mesh networks for ${domain}.`, 
-      saturation: "High", 
-      major_assignees: ["Tesla", "IBM", "Intel"] 
+    {
+      category: `Distributed ${titleCaseDomain} Routing`,
+      description: `Patents protecting modular configurations, telemetry routers, and wireless mesh networks for ${domain}.`,
+      saturation: "High",
+      major_assignees: ["Tesla", "IBM", "Intel"]
     },
-    { 
-      category: `Thermal & Safety Regulation`, 
-      description: `Patented casing designs, cooling loop enclosures, and safety switches protecting ${domain} assets.`, 
-      saturation: "Medium", 
-      major_assignees: ["LG Energy Solution", "Honeywell", "Bosch"] 
+    {
+      category: `Thermal & Safety Regulation`,
+      description: `Patented casing designs, cooling loop enclosures, and safety switches protecting ${domain} assets.`,
+      saturation: "Medium",
+      major_assignees: ["LG Energy Solution", "Honeywell", "Bosch"]
     },
-    { 
-      category: `Predictive Diagnostic Engines`, 
-      description: `Patents covering sensor interfaces and edge co-processors predicting degradation rates in ${domain}.`, 
-      saturation: "Low", 
-      major_assignees: ["Schneider Electric", "Microsoft", "ABB"] 
+    {
+      category: `Predictive Diagnostic Engines`,
+      description: `Patents covering sensor interfaces and edge co-processors predicting degradation rates in ${domain}.`,
+      saturation: "Low",
+      major_assignees: ["Schneider Electric", "Microsoft", "ABB"]
     }
   ];
 
   const gaps: GapEntry[] = [
-    { 
-      area: `Quantum-Resistant Identity in ${titleCaseDomain}`, 
-      research_activity: "High", 
-      patent_activity: "None", 
-      opportunity_score: 90 + (hash % 8), 
-      rationale: `Strong academic interest in post-quantum cryptographic schemes for ${domain} user authentication, but zero commercial patent filings exist.` 
+    {
+      area: `Quantum-Resistant Identity in ${titleCaseDomain}`,
+      research_activity: "High",
+      patent_activity: "None",
+      opportunity_score: 90 + (hash % 8),
+      rationale: `Strong academic interest in post-quantum cryptographic schemes for ${domain} user authentication, but zero commercial patent filings exist.`
     },
-    { 
-      area: `Fully Homomorphic Database Operations in ${titleCaseDomain}`, 
-      research_activity: "High", 
-      patent_activity: "Low", 
-      opportunity_score: 85 + (hash % 10), 
-      rationale: `Academic research on hardware-accelerated homomorphic database kernels, while commercial ${domain} patents focus on standard transport encryption.` 
+    {
+      area: `Fully Homomorphic Database Operations in ${titleCaseDomain}`,
+      research_activity: "High",
+      patent_activity: "Low",
+      opportunity_score: 85 + (hash % 10),
+      rationale: `Academic research on hardware-accelerated homomorphic database kernels, while commercial ${domain} patents focus on standard transport encryption.`
     },
-    { 
-      area: `Self-Healing Node Patching in ${titleCaseDomain}`, 
-      research_activity: "Medium", 
-      patent_activity: "Low", 
-      opportunity_score: 78 + (hash % 12), 
-      rationale: `Study of consensus-driven secure firmware distributions for ${domain} IoT nodes, with minimal patent assignments.` 
+    {
+      area: `Self-Healing Node Patching in ${titleCaseDomain}`,
+      research_activity: "Medium",
+      patent_activity: "Low",
+      opportunity_score: 78 + (hash % 12),
+      rationale: `Study of consensus-driven secure firmware distributions for ${domain} IoT nodes, with minimal patent assignments.`
     },
-    { 
-      area: `Zero-Knowledge Biometric Data Proofs for ${titleCaseDomain}`, 
-      research_activity: "High", 
-      patent_activity: "Low", 
-      opportunity_score: 75 + (hash % 14), 
-      rationale: `Scholarly publications on edge signature hashing in ${domain} without storing raw templates, with only legacy patents registered.` 
+    {
+      area: `Zero-Knowledge Biometric Data Proofs for ${titleCaseDomain}`,
+      research_activity: "High",
+      patent_activity: "Low",
+      opportunity_score: 75 + (hash % 14),
+      rationale: `Scholarly publications on edge signature hashing in ${domain} without storing raw templates, with only legacy patents registered.`
     },
-    { 
-      area: `Distributed Endpoint Log Anomaly Detection in ${titleCaseDomain}`, 
-      research_activity: "Medium", 
-      patent_activity: "Low", 
-      opportunity_score: 72 + (hash % 15), 
-      rationale: `Research on federated learning models analyzing local endpoint telemetry in ${domain}, while patents focus on centralized logs.` 
+    {
+      area: `Distributed Endpoint Log Anomaly Detection in ${titleCaseDomain}`,
+      research_activity: "Medium",
+      patent_activity: "Low",
+      opportunity_score: 72 + (hash % 15),
+      rationale: `Research on federated learning models analyzing local endpoint telemetry in ${domain}, while patents focus on centralized logs.`
     }
   ];
 
   const ideas: InnovationIdea[] = [
-    { 
-      name: `NovaScan ${titleCaseDomain} Optimizer`, 
-      description: `An advanced control platform using high-fidelity telemetry models and local co-processors to resolve critical gaps in Quantum-Resistant Identity in ${titleCaseDomain}.`, 
-      target_user: `R&D organizations, startup founders, and technology research labs specializing in ${domain}.`, 
-      type: "product", 
-      based_on_gap: `Quantum-Resistant Identity in ${titleCaseDomain}`, 
-      market_potential: "High", 
-      novelty_score: 92 + (hash % 6), 
-      core_technology: `Multiphysics neural networks, edge impedance sensors, electrochemical model-based tracking.`, 
+    {
+      name: `NovaScan ${titleCaseDomain} Optimizer`,
+      description: `An advanced control platform using high-fidelity telemetry models and local co-processors to resolve critical gaps in Quantum-Resistant Identity in ${titleCaseDomain}.`,
+      target_user: `R&D organizations, startup founders, and technology research labs specializing in ${domain}.`,
+      type: "product",
+      based_on_gap: `Quantum-Resistant Identity in ${titleCaseDomain}`,
+      market_potential: "High",
+      novelty_score: 92 + (hash % 6),
+      core_technology: `Multiphysics neural networks, edge impedance sensors, electrochemical model-based tracking.`,
       potential_benefits: [
         `Protects communication against quantum intercepts in ${domain}`,
         `No centralized credential repositories required`,
         `Sub-millisecond connection establishment latency`
-      ] 
+      ]
     },
-    { 
-      name: `${titleCaseDomain} Trust Link Gateway`, 
-      description: `A secure edge gateway utilizing lattice-based cryptographic handshakes and local telemetry validation to address Fully Homomorphic Database Operations in ${titleCaseDomain}.`, 
-      target_user: `Enterprise IT departments, smart network operators, and local developers.`, 
-      type: "system", 
-      based_on_gap: `Fully Homomorphic Database Operations in ${titleCaseDomain}`, 
-      market_potential: "High", 
-      novelty_score: 87 + (hash % 8), 
-      core_technology: `Decentralized consensus protocol, state forecasting, secure hardware enclaves.`, 
+    {
+      name: `${titleCaseDomain} Trust Link Gateway`,
+      description: `A secure edge gateway utilizing lattice-based cryptographic handshakes and local telemetry validation to address Fully Homomorphic Database Operations in ${titleCaseDomain}.`,
+      target_user: `Enterprise IT departments, smart network operators, and local developers.`,
+      type: "system",
+      based_on_gap: `Fully Homomorphic Database Operations in ${titleCaseDomain}`,
+      market_potential: "High",
+      novelty_score: 87 + (hash % 8),
+      core_technology: `Decentralized consensus protocol, state forecasting, secure hardware enclaves.`,
       potential_benefits: [
         `Guarantees absolute compliance with telemetry privacy rules in ${domain}`,
         `Reduces peak network load overheads by 20%`,
         `Requires zero central storage servers`
-      ] 
+      ]
     },
-    { 
-      name: `PatchAuto ${titleCaseDomain} Defender`, 
-      description: `An autonomous IoT node agent that leverages peer validation logs to verify and safely install firmware updates without center administration.`, 
-      target_user: `Industrial IoT operators and critical infrastructure suppliers using ${domain}.`, 
-      type: "platform", 
-      based_on_gap: `Self-Healing Node Patching in ${titleCaseDomain}`, 
-      market_potential: "Medium", 
-      novelty_score: 80 + (hash % 10), 
-      core_technology: `Decentralized consensus validation, hardware trust root checks, binary delta reconstruction.`, 
+    {
+      name: `PatchAuto ${titleCaseDomain} Defender`,
+      description: `An autonomous IoT node agent that leverages peer validation logs to verify and safely install firmware updates without center administration.`,
+      target_user: `Industrial IoT operators and critical infrastructure suppliers using ${domain}.`,
+      type: "platform",
+      based_on_gap: `Self-Healing Node Patching in ${titleCaseDomain}`,
+      market_potential: "Medium",
+      novelty_score: 80 + (hash % 10),
+      core_technology: `Decentralized consensus validation, hardware trust root checks, binary delta reconstruction.`,
       potential_benefits: [
         `Eliminates update injection attacks in ${domain}`,
         `Reduces fleet maintenance costs by 60%`,
         `Maintains node up-times during local updates`
-      ] 
+      ]
     }
   ];
 
   const patentability: PatentabilityResult[] = [
-    { 
-      idea_name: `NovaScan ${titleCaseDomain} Optimizer`, 
-      patentability_score: 88 + (hash % 8), 
-      prior_art_risk: "Low", 
-      novelty_score: 92 + (hash % 6), 
-      commercial_viability: "High", 
-      recommendation: `Strong Patent Candidate - High priority. Post-quantum biometric session mapping for ${domain} has zero recorded prior-art applications.` 
+    {
+      idea_name: `NovaScan ${titleCaseDomain} Optimizer`,
+      patentability_score: 88 + (hash % 8),
+      prior_art_risk: "Low",
+      novelty_score: 92 + (hash % 6),
+      commercial_viability: "High",
+      recommendation: `Strong Patent Candidate - High priority. Post-quantum biometric session mapping for ${domain} has zero recorded prior-art applications.`
     },
-    { 
-      idea_name: `${titleCaseDomain} Trust Link Gateway`, 
-      patentability_score: 75 + (hash % 10), 
-      prior_art_risk: "Medium", 
-      novelty_score: 86 + (hash % 8), 
-      commercial_viability: "High", 
-      recommendation: `Strong Patent Candidate - Multi-threaded gate optimization in FHE proxy engines is highly novel.` 
+    {
+      idea_name: `${titleCaseDomain} Trust Link Gateway`,
+      patentability_score: 75 + (hash % 10),
+      prior_art_risk: "Medium",
+      novelty_score: 86 + (hash % 8),
+      commercial_viability: "High",
+      recommendation: `Strong Patent Candidate - Multi-threaded gate optimization in FHE proxy engines is highly novel.`
     },
-    { 
-      idea_name: `PatchAuto ${titleCaseDomain} Defender`, 
-      patentability_score: 82 + (hash % 8), 
-      prior_art_risk: "Low", 
-      novelty_score: 80 + (hash % 10), 
-      commercial_viability: "Medium", 
-      recommendation: `Strong Patent Candidate - Consensus-driven local device firmware updates remain unpatented.` 
+    {
+      idea_name: `PatchAuto ${titleCaseDomain} Defender`,
+      patentability_score: 82 + (hash % 8),
+      prior_art_risk: "Low",
+      novelty_score: 80 + (hash % 10),
+      commercial_viability: "Medium",
+      recommendation: `Strong Patent Candidate - Consensus-driven local device firmware updates remain unpatented.`
     }
   ];
+
+  const patentability_scores: PatentabilityScore[] = ideas.map((idea, idx) => ({
+    innovation_name: idea.name,
+    overall_score: 85 + (hash % 10) - idx * 4,
+    novelty_score: 88 + (hash % 8) - idx * 3,
+    competition_score: 80 + (hash % 12) - idx * 2,
+    feasibility_score: 84 + (hash % 10),
+    market_potential_score: 90 + (hash % 8),
+    reasoning: `Strong novel inventive step under 35 U.S.C. § 103 due to unexpected synergistic combination in ${domain}.`,
+    similar_patents: [
+      `US11245392B2 - Dynamic ${titleCaseDomain} Method`,
+      `US10985421B1 - ${titleCaseDomain} System & Controller`,
+      `US10879693B2 - Advanced ${titleCaseDomain} Protocol`
+    ]
+  }));
+
+  const market_analysis: MarketAnalysisResult[] = [
+    {
+      innovation_name: ideas[0]?.name || `${titleCaseDomain} Solution`,
+      trend_score: 92 + (hash % 7),
+      growth_trend: "Surging (+175%)",
+      research_growth: "+210%",
+      patent_growth: "+185%",
+      enterprise_adoption: ["Microsoft", "Cisco", "IBM", "Palo Alto Networks", "CrowdStrike"],
+      startup_count: 14 + (hash % 10),
+      key_insights: [
+        `Public interest for ${domain} innovations is up 175% year-over-year on Google Trends.`,
+        `Major enterprises actively acquiring ${domain} intellectual property.`,
+        `Open-source GitHub developer activity encompasses 280+ active repositories.`,
+        `High market opportunity score driven by enterprise security & efficiency mandates.`
+      ],
+      market_opportunity_score: 92 + (hash % 7),
+      summary: `High commercial opportunity backed by enterprise adoption for ${domain}.`
+    }
+  ];
+
+  const funding_analysis: FundingAnalysisResult = {
+    innovation_name: ideas[0]?.name || `${titleCaseDomain} Solution`,
+    domain: titleCaseDomain,
+    country: "Global",
+    startup_stage: "Prototype",
+    top_opportunities: [
+      {
+        name: `${titleCaseDomain} Deep-Tech Seed Grant`,
+        organization: "Government & Enterprise Innovation Fund",
+        category: "Government Grant",
+        funding_amount: "$250,000 Non-Dilutive Grant",
+        country: "Global",
+        eligibility: `Startups developing novel physical/software products in ${domain}`,
+        technology_focus: `${titleCaseDomain}, AI, CyberSecurity, Infrastructure`,
+        startup_stage: "Prototype",
+        benefits: ["Non-Dilutive Grant", "Incubation Support", "Market Mentorship"],
+        deadline: "Rolling / Open Application",
+        official_website: "https://www.startupindia.gov.in",
+        match_score: 95,
+        reason_for_recommendation: `High keyword and technology relevance for ${domain} prototype applications.`
+      },
+      {
+        name: "Y Combinator S24 / W25 Batch",
+        organization: "Y Combinator",
+        category: "Accelerator",
+        funding_amount: "$500,000 for 7% equity",
+        country: "Global / US",
+        eligibility: `Early-stage tech startups building breakthrough ${domain} solutions`,
+        technology_focus: `${titleCaseDomain}, Developer Tools, AI, B2B SaaS`,
+        startup_stage: "Prototype",
+        benefits: ["$500k Investment", "YC Partner Mentorship", "Demo Day Access"],
+        deadline: "Open Application",
+        official_website: "https://www.ycombinator.com",
+        match_score: 92,
+        reason_for_recommendation: `Top-tier global seed accelerator program matching high growth tech in ${domain}.`
+      }
+    ],
+    funding_strategy: [
+      { phase: "Phase 1: Non-Dilutive Seed Grant", program_name: `${titleCaseDomain} Deep-Tech Seed Grant`, action: "Submit grant proposal for prototype validation." },
+      { phase: "Phase 2: Global Accelerator", program_name: "Y Combinator Batch", action: "Apply to Y Combinator for $500k funding & partner mentorship." },
+      { phase: "Phase 3: Seed VC Round", program_name: "Lead VC Seed Round", action: "Pitch institutional seed investors to scale customer pilots." }
+    ],
+    summary: `Phased non-dilutive grant and top accelerator trajectory for ${domain}.`
+  };
 
   return {
     papers_analyzed,
@@ -361,7 +496,10 @@ const getFallbackDataForDomain = (domain: string): {
     clusters,
     gaps,
     ideas,
-    patentability
+    patentability,
+    patentability_scores,
+    market_analysis,
+    funding_analysis
   };
 };
 
@@ -395,7 +533,7 @@ export async function startAnalysis(domain: string): Promise<{ session_id: strin
     if (data.success === false) {
       throw new Error(data.error || "Backend pipeline returned error status");
     }
-    
+
     // Map backend pipeline result to AnalysisState
     const state: AnalysisState = {
       domain: data.domain || domain,
@@ -407,9 +545,12 @@ export async function startAnalysis(domain: string): Promise<{ session_id: strin
       research_topics: data.research_topics || [],
       patent_clusters: data.patent_clusters || [],
       gap_matrix: data.gap_matrix || [],
-      innovation_ideas: data.innovation_ideas || []
+      innovation_ideas: data.innovation_ideas || [],
+      patentability_scores: data.patentability_scores || [],
+      market_analysis: data.market_analysis || [],
+      funding_analysis: data.funding_analysis || undefined
     };
-    
+
     lastBackendState = state;
     return { session_id: "backend", isRealBackend: true, result: state };
   } catch (err) {
@@ -429,10 +570,24 @@ export async function startAnalysis(domain: string): Promise<{ session_id: strin
         patent_clusters: mockData.clusters,
         gap_matrix: mockData.gaps,
         innovation_ideas: mockData.ideas,
-        patentability: mockData.patentability
+        patentability: mockData.patentability,
+        patentability_scores: mockData.patentability_scores,
+        market_analysis: mockData.market_analysis,
+        funding_analysis: mockData.funding_analysis
       }
     };
     return { session_id };
+  }
+}
+
+export async function fetchBackendLogs(): Promise<string[]> {
+  try {
+    const res = await fetch("http://localhost:8000/api/logs");
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.logs || [];
+  } catch (err) {
+    return [];
   }
 }
 
@@ -440,7 +595,7 @@ export async function pollAnalysis(sessionId: string): Promise<AnalysisState> {
   if (sessionId === "backend" && lastBackendState) {
     return lastBackendState;
   }
-  
+
   try {
     const res = await fetch(`/api/analysis/${sessionId}`);
     if (!res.ok) throw new Error("Failed to query analysis status");
@@ -497,15 +652,4 @@ export async function pollAnalysis(sessionId: string): Promise<AnalysisState> {
 
 export async function getAnalysisResults(sessionId: string): Promise<AnalysisState> {
   return pollAnalysis(sessionId);
-}
-
-export async function fetchBackendLogs(): Promise<string[]> {
-  try {
-    const res = await fetch("/api/logs");
-    if (!res.ok) throw new Error("Failed to fetch logs");
-    const data = await res.json();
-    return data.logs || [];
-  } catch (err) {
-    return [];
-  }
 }
